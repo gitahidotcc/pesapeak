@@ -1,19 +1,12 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "env": {
-    "browser": true,
-    "node": true,
-    "es2022": true
-  },
-  "rules": {
-    "no-unused-vars": "warn",
-    "no-undef": "error"
-  },
+  "$schema": "node_modules/oxlint/configuration_schema.json",
   "ignorePatterns": [
-    "node_modules/",
-    "dist/",
-    "apps/**/dist/",
-    "packages/**/dist/"
+    "**/*.config.js",
+    "**/*.config.cjs",
+    "**/.eslintrc.cjs",
+    "**/.next",
+    "**/dist",
+    "**/build",
+    "**/pnpm-lock.yaml"
   ]
 }
-
