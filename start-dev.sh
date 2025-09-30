@@ -21,3 +21,19 @@ if [ ! -d "node_modules" ]; then
     echo "Installing dependencies..."
     pnpm install
 fi
+
+# Default dev port for Vite
+DEV_PORT=${DEV_PORT:-5173}
+
+# Check and free the port if necessary
+if port_in_use "$DEV_PORT"; then
+    echo "Port $DEV_PORT is in use. Attempting to free it..."
+    PID=$(lsof -ti :"$DEV_PORT")
+    if [ -n "$PID" ]; then
+        kill -9 "$PID" || true
+        echo "Freed port $DEV_PORT (killed PID $PID)."
+    fi
+fi
+
+echo "Starting landing dev server on port $DEV_PORT..."
+pnpm --filter landing dev -- --port "$DEV_PORT"

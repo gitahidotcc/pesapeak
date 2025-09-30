@@ -1,14 +1,23 @@
 {
+  "$schema": "https://json.schemastore.org/package.json",
   "name": "pesapeak",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "dev": "pnpm --filter @pesapeak/landing run dev",
+    "build": "pnpm --filter @pesapeak/landing run build",
+    "preview": "pnpm --filter @pesapeak/landing run preview",
+    "clean": "git clean -xdf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "typecheck": "pnpm --filter @pesapeak/landing exec tsc -b",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "oxlint": "^1.19.0",
     "prettier": "^3.6.2",
     "turbo": "^2.5.8",
     "typescript": "5.9.2"
