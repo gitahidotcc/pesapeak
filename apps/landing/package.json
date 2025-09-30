@@ -16,6 +16,9 @@
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@pesapeak/oxlint-config": "workspace:*",
+    "@pesapeak/prettier-config": "workspace:*",
+    "@pesapeak/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "^4.1.13",
     "@tailwindcss/typography": "^0.5.10",
     "@types/react": "^19.1.13",
@@ -24,10 +27,12 @@
     "autoprefixer": "^10.4.21",
     "oxlint": "^1.19.0",
     "postcss": "^8.5.6",
+    "prettier": "^3.4.2",
     "tailwindcss": "^4.1.13",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.8.3",
     "vite": "^7.1.7",
     "vite-plugin-svgr": "^4.5.0"
-  }
+  },
+  "prettier": "@pesapeak/prettier-config"
 }
