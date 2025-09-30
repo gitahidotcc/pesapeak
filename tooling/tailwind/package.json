@@ -1,0 +1,32 @@
+{
+  "name": "@pesapeak/tailwind-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./globals.css": "./globals.css"
+  },
+  "license": "MIT",
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules",
+    "format": "prettier . --cache --ignore-path ../../.prettierignore --check",
+    "format:fix": "prettier . --cache --write --ignore-path ../../.prettierignore",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "typecheck": "echo 'No TypeScript files to check'"
+  },
+  "dependencies": {
+    "@tailwindcss/typography": "^0.5.10",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@pesapeak/prettier-config": "workspace:^0.1.0",
+    "@pesapeak/tsconfig": "workspace:^0.1.0",
+    "@tailwindcss/cli": "^4.1.13",
+    "@tailwindcss/postcss": "^4.1.13",
+    "prettier": "^3.4.2",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.8.3"
+  },
+  "prettier": "@pesapeak/prettier-config"
+}
