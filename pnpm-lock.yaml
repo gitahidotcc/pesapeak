@@ -101,6 +101,15 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  tooling/oxlint:
+    devDependencies:
+      '@pesapeak/prettier-config':
+        specifier: workspace:^0.1.0
+        version: link:../prettier
+      prettier:
+        specifier: ^3.4.2
+        version: 3.6.2
+
   tooling/prettier:
     dependencies:
       '@ianvs/prettier-plugin-sort-imports':

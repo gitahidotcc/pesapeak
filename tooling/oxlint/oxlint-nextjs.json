@@ -1,0 +1,12 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["@pesapeak/oxlint-config/react"],
+  "rules": {
+    "react/no-html-link-for-pages": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2022": true,
+    "node": true
+  }
+}

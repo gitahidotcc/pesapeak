@@ -1,12 +1,11 @@
 {
-  "$schema": "node_modules/oxlint/configuration_schema.json",
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["@pesapeak/oxlint-config/base"],
   "ignorePatterns": [
-    "**/*.config.js",
-    "**/*.config.cjs",
-    "**/.eslintrc.cjs",
-    "**/.next",
-    "**/dist",
-    "**/build",
-    "**/pnpm-lock.yaml"
+    "node_modules/",
+    "dist/",
+    "apps/**/dist/",
+    "packages/**/dist/",
+    "tooling/**/node_modules/"
   ]
 }

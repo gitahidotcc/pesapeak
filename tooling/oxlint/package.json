@@ -1,0 +1,27 @@
+{
+  "name": "@pesapeak/oxlint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./oxlint-base.json",
+    "./react": "./oxlint-react.json",
+    "./nextjs": "./oxlint-nextjs.json"
+  },
+  "files": [
+    "oxlint-base.json",
+    "oxlint-react.json", 
+    "oxlint-nextjs.json"
+  ],
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules",
+    "format": "prettier . --cache --ignore-path ../../.prettierignore --check",
+    "format:fix": "prettier . --cache --write --ignore-path ../../.prettierignore",
+    "typecheck": "echo 'No TypeScript files to check'"
+  },
+  "devDependencies": {
+    "@pesapeak/prettier-config": "workspace:^0.1.0",
+    "prettier": "^3.4.2"
+  },
+  "prettier": "@pesapeak/prettier-config"
+}
