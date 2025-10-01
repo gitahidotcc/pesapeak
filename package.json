@@ -4,24 +4,31 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @pesapeak/landing run dev",
-    "build": "pnpm --filter @pesapeak/landing run build",
-    "preview": "pnpm --filter @pesapeak/landing run preview",
+    "dev": "turbo --no-daemon dev --parallel",
+    "build": "turbo --no-daemon build",
     "clean": "git clean -xdf node_modules",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "clean:workspaces": "turbo --no-daemon clean",
+    "web": "pnpm --filter @pesapeak/web run dev",
+    "landing": "pnpm --filter @pesapeak/landing run dev",
+    "format": "turbo --no-daemon format --continue",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
-    "lint": "oxlint .",
-    "lint:fix": "oxlint . --fix",
-    "typecheck": "pnpm --filter @pesapeak/landing exec tsc -b",
+    "format:fix": "turbo --no-daemon format:fix --continue",
+    "lint": "turbo --no-daemon lint --continue",
+    "lint:fix": "turbo --no-daemon lint:fix --continue",
+    "typecheck": "turbo --no-daemon typecheck",
+    "preflight": "turbo run --no-daemon typecheck lint format",
+    "preflight:fix": "turbo run --no-daemon typecheck lint:fix format:fix",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@pesapeak/prettier-config": "workspace:^0.1.0",
     "husky": "^9.1.7",
     "oxlint": "^1.19.0",
     "prettier": "^3.6.2",
     "turbo": "^2.5.8",
     "typescript": "5.9.2"
   },
+  "prettier": "@pesapeak/prettier-config",
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=20"

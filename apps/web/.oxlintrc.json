@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["@pesapeak/oxlint-config/nextjs"],
+  "env": {
+    "browser": true,
+    "es2022": true,
+    "node": true
+  }
+}
