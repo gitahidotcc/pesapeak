@@ -13,9 +13,16 @@ export default function Navigation() {
             <div className="flex-shrink-0">
               <Link 
                 to="/"
-                className="text-2xl font-bold text-primary hover:text-primary/80 transition-colors duration-200"
+                className="flex items-center space-x-2 hover:opacity-80 transition-opacity duration-200"
               >
-                PesaPeak
+                <img 
+                  src="/icons/logo-icon.svg" 
+                  alt="PesaPeak Logo" 
+                  className="h-8 w-8"
+                />
+                <span className="text-2xl font-bold text-primary">
+                  PesaPeak
+                </span>
               </Link>
             </div>
           </div>

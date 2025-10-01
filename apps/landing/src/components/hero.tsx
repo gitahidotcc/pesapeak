@@ -14,23 +14,77 @@ export default function Hero() {
               Track expenses manually, organize your accounts, and get a complete picture of your financial 
               health—all in one place.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <a
-                href="https://demo.pesapeak.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-primary text-primary-foreground px-8 py-4 rounded-lg font-semibold text-lg hover:bg-primary/90 transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
-              >
-                Try Demo
-              </a>
-              <a
-                href="https://github.com/gitahicc/pesapeak"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="border-2 border-primary text-primary px-8 py-4 rounded-lg font-semibold text-lg hover:bg-primary hover:text-primary-foreground transition-colors duration-200"
-              >
-                GitHub
-              </a>
+            <div className="flex flex-col gap-6 justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <a
+                  href="https://demo.pesapeak.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-primary text-primary-foreground px-8 py-4 rounded-lg font-semibold text-lg hover:bg-primary/90 transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
+                >
+                  Try Demo
+                </a>
+                <a
+                  href="https://github.com/gitahicc/pesapeak"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-2 border-primary text-primary px-8 py-4 rounded-lg font-semibold text-lg hover:bg-primary hover:text-primary-foreground transition-colors duration-200"
+                >
+                  GitHub
+                </a>
+              </div>
+              
+              {/* App Store Badges */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity duration-200"
+                >
+                  <img 
+                    src="/app-store-badge.png" 
+                    alt="Download on the App Store"
+                    className="h-12 w-auto"
+                  />
+                </a>
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity duration-200"
+                >
+                  <img 
+                    src="/google-play-badge.webp" 
+                    alt="Get it on Google Play"
+                    className="h-12 w-auto"
+                  />
+                </a>
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity duration-200"
+                >
+                  <img 
+                    src="/chrome-extension-badge.png" 
+                    alt="Add to Chrome"
+                    className="h-12 w-auto"
+                  />
+                </a>
+                <a
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity duration-200"
+                >
+                  <img 
+                    src="/firefox-addon.png" 
+                    alt="Add to Firefox"
+                    className="h-12 w-auto"
+                  />
+                </a>
+              </div>
             </div>
           </div>
 

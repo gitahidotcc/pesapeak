@@ -1,8 +1,8 @@
-import Navigation from '../components/Navigation'
-import Hero from '../components/Hero'
-import Features from '../components/Features'
-import Integrations from '../components/Integrations'
-import Footer from '../components/Footer'
+import Navigation from '../components/navigation'
+import Hero from '../components/hero'
+import Features from '../components/features'
+import Integrations from '../components/integrations'
+import Footer from '../components/footer'
 
 export default function HomePage() {
   return (

@@ -2,22 +2,26 @@ const integrations = [
   {
     name: "App Store",
     platform: "iOS",
-    placeholder: "App Store Badge"
+    image: "/app-store-badge.png",
+    link: "#"
   },
   {
     name: "Google Play",
     platform: "Android", 
-    placeholder: "Google Play Badge"
+    image: "/google-play-badge.webp",
+    link: "#"
   },
   {
     name: "Chrome Web Store",
     platform: "Browser",
-    placeholder: "Chrome Badge"
+    image: "/chrome-extension-badge.png",
+    link: "#"
   },
   {
     name: "Firefox Add-ons",
     platform: "Browser",
-    placeholder: "Firefox Badge"
+    image: "/firefox-addon.png",
+    link: "#"
   }
 ]
 
@@ -36,19 +40,19 @@ export default function Integrations() {
 
         <div className="flex flex-wrap justify-center gap-6">
           {integrations.map((integration, index) => (
-            <div
+            <a
               key={index}
-              className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 min-w-[200px] text-center"
+              href={integration.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 min-w-[200px] text-center block"
             >
-              <div className="bg-muted rounded-lg h-16 flex items-center justify-center mb-4">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-primary/20 rounded-lg mx-auto mb-2 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{integration.placeholder}</p>
-                </div>
+              <div className="rounded-lg h-16 flex items-center justify-center mb-4 overflow-hidden">
+                <img 
+                  src={integration.image} 
+                  alt={`${integration.name} Badge`}
+                  className="h-full w-auto object-contain"
+                />
               </div>
               <h3 className="font-semibold text-foreground mb-1">
                 {integration.name}
@@ -56,7 +60,7 @@ export default function Integrations() {
               <p className="text-sm text-muted-foreground">
                 {integration.platform}
               </p>
-            </div>
+            </a>
           ))}
         </div>
       </div>
