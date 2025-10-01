@@ -27,39 +27,34 @@ const integrations = [
 
 export default function Integrations() {
   return (
-    <section className="py-20 bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+    <section className="py-20 bg-muted/30 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
             Available Everywhere
           </h2>
-          <p className="text-xl text-muted-foreground">
-            Access PesaPeak on all your devices and platforms
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Access PesaPeak on all your devices and platforms with seamless synchronization
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-6">
+        <div className="flex flex-wrap justify-center gap-8 lg:gap-12">
           {integrations.map((integration, index) => (
             <a
               key={index}
               href={integration.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 min-w-[200px] text-center block"
+              className="flex flex-col items-center"
             >
-              <div className="rounded-lg h-16 flex items-center justify-center mb-4 overflow-hidden">
-                <img 
-                  src={integration.image} 
-                  alt={`${integration.name} Badge`}
-                  className="h-full w-auto object-contain"
-                />
-              </div>
-              <h3 className="font-semibold text-foreground mb-1">
-                {integration.name}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {integration.platform}
-              </p>
+              <img 
+                src={integration.image} 
+                alt={`${integration.name} Badge`}
+                className="h-12 w-auto object-contain rounded-xl shadow-sm"
+              />
             </a>
           ))}
         </div>

@@ -176,7 +176,7 @@ export default function Pricing() {
             </div>
             <div className="flex space-x-6">
               <a
-                href="/docs"
+                href="https://docs.pesapeak.app"
                 className="text-sm text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Docs
