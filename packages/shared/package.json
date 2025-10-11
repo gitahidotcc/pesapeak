@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@pesapeak/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "lint": "oxlint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@pesapeak/prettier-config": "workspace:*",
+    "@pesapeak/tsconfig": "workspace:*",
+    "@types/node": "^22.15.3",
+    "typescript": "5.9.2"
+  },
+  "prettier": "@pesapeak/prettier-config",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.908.0",
+    "glob": "^11.0.3",
+    "winston": "^3.18.3"
+  }
+}
