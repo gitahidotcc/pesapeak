@@ -39,12 +39,12 @@ const allEnv = z.object({
         .filter((w) => w),
     ),
   API_URL: z.string().url().default("http://localhost:3000"),
-  NEXTAUTH_URL: z
+  BETTER_AUTH_URL: z
     .string()
     .url()
     .default("http://localhost:3000")
     .transform((s) => s.replace(/\/+$/, "")),
-  NEXTAUTH_SECRET: z.string().optional(),
+  BETTER_AUTH_SECRET: z.string().optional(),
   DISABLE_SIGNUPS: stringBool("false"),
   DISABLE_PASSWORD_AUTH: stringBool("false"),
   OAUTH_ALLOW_DANGEROUS_EMAIL_ACCOUNT_LINKING: stringBool("false"),
@@ -132,13 +132,13 @@ const serverConfigSchema = allEnv.transform((val, ctx) => {
       disabledWorkers: val.WORKERS_DISABLED_WORKERS,
     },
     apiUrl: val.API_URL,
-    publicUrl: val.NEXTAUTH_URL,
-    publicApiUrl: `${val.NEXTAUTH_URL}/api`,
+    publicUrl: val.BETTER_AUTH_URL,
+    publicApiUrl: `${val.BETTER_AUTH_URL}/api`,
     signingSecret: () => {
-      if (!val.NEXTAUTH_SECRET) {
-        throw new Error("NEXTAUTH_SECRET is not set");
+      if (!val.BETTER_AUTH_SECRET) {
+        throw new Error("BETTER_AUTH_SECRET is not set");
       }
-      return val.NEXTAUTH_SECRET;
+      return val.BETTER_AUTH_SECRET;
     },
     auth: {
       disableSignups: val.DISABLE_SIGNUPS,
