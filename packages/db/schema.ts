@@ -43,3 +43,30 @@ export const users = sqliteTable("user", {
   // User Settings
   timezone: text("timezone").default("UTC"),
 });
+
+export const verificationTokens = sqliteTable(
+  "verificationToken",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+  },
+  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })],
+);
+
+export const passwordResetTokens = sqliteTable(
+  "passwordResetToken",
+  {
+    id: text("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+    createdAt: createdAtField(),
+  },
+  (prt) => [index("passwordResetTokens_userId_idx").on(prt.userId)],
+);

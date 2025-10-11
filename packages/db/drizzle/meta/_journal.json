@@ -8,6 +8,13 @@
       "when": 1760210719625,
       "tag": "0000_wild_masked_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1760213890453,
+      "tag": "0001_great_nebula",
+      "breakpoints": true
     }
   ]
 }
