@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         {children}
+        <Toaster />
       </body>
     </html>
   );

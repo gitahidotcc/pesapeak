@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@pesapeak/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx migrate.ts",
+    "generate": "drizzle-kit generate",
+    "studio": "drizzle-kit studio",
+    "format": "prettier . --cache --ignore-path ../../.prettierignore --check",
+    "format:fix": "prettier . --cache --write --ignore-path ../../.prettierignore",
+    "lint:fix": "oxlint . --fix",
+    "lint": "oxlint ."
+  },
+  "dependencies": {
+    "@pesapeak/shared": "workspace:*",
+    "better-sqlite3": "^12.4.1",
+    "drizzle-orm": "^0.44.6"
+  },
+  "devDependencies": {
+    "@pesapeak/oxlint-config": "workspace:^",
+    "@pesapeak/prettier-config": "workspace:*",
+    "@pesapeak/tsconfig": "workspace:*",
+    "@tsconfig/node22": "^22.0.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "drizzle-kit": "^0.31.5",
+    "tsx": "^4.20.6"
+  },
+  "prettier": "@pesapeak/prettier-config"
+}
