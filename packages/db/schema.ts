@@ -9,6 +9,7 @@ import {
   text,
   unique,
 } from "drizzle-orm/sqlite-core";
+import { createId } from "@paralleldrive/cuid2";
 
 
 function createdAtField() {
@@ -26,3 +27,19 @@ function modifiedAtField() {
 
 
 
+export const users = sqliteTable("user", {
+  id: text("id")
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: integer("emailVerified", { mode: "timestamp_ms" }),
+  image: text("image"),
+  password: text("password"),
+  salt: text("salt").notNull().default(""),
+  role: text("role", { enum: ["admin", "user"] }).default("user"),
+
+  // User Settings
+  timezone: text("timezone").default("UTC"),
+});
