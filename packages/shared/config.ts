@@ -1,0 +1,282 @@
+import crypto from "node:crypto";
+import path from "path";
+import { z } from "zod";
+
+const stringBool = (defaultValue: string) =>
+  z
+    .string()
+    .default(defaultValue)
+    .refine((s) => s === "true" || s === "false")
+    .transform((s) => s === "true");
+
+const optionalStringBool = () =>
+  z
+    .string()
+    .refine((s) => s === "true" || s === "false")
+    .transform((s) => s === "true")
+    .optional();
+
+const allEnv = z.object({
+  PORT: z.coerce.number().default(3000),
+  WORKERS_HOST: z.string().default("127.0.0.1"),
+  WORKERS_PORT: z.coerce.number().default(0),
+  WORKERS_ENABLED_WORKERS: z
+    .string()
+    .default("")
+    .transform((val) =>
+      val
+        .split(",")
+        .map((w) => w.trim())
+        .filter((w) => w),
+    ),
+  WORKERS_DISABLED_WORKERS: z
+    .string()
+    .default("")
+    .transform((val) =>
+      val
+        .split(",")
+        .map((w) => w.trim())
+        .filter((w) => w),
+    ),
+  API_URL: z.string().url().default("http://localhost:3000"),
+  BETTER_AUTH_URL: z
+    .string()
+    .url()
+    .default("http://localhost:3000")
+    .transform((s) => s.replace(/\/+$/, "")),
+  BETTER_AUTH_SECRET: z.string().optional(),
+  DISABLE_SIGNUPS: stringBool("false"),
+  DISABLE_PASSWORD_AUTH: stringBool("false"),
+  OAUTH_ALLOW_DANGEROUS_EMAIL_ACCOUNT_LINKING: stringBool("false"),
+  OAUTH_WELLKNOWN_URL: z.string().url().optional(),
+  OAUTH_CLIENT_SECRET: z.string().optional(),
+  OAUTH_CLIENT_ID: z.string().optional(),
+  OAUTH_TIMEOUT: z.coerce.number().optional().default(3500),
+  OAUTH_SCOPE: z.string().default("openid email profile"),
+  OAUTH_PROVIDER_NAME: z.string().default("Custom Provider"),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_BASE_URL: z.string().url().optional(),
+  OLLAMA_BASE_URL: z.string().url().optional(),
+  OLLAMA_KEEP_ALIVE: z.string().optional(),
+  INFERENCE_JOB_TIMEOUT_SEC: z.coerce.number().default(30),
+  INFERENCE_FETCH_TIMEOUT_SEC: z.coerce.number().default(300),
+  INFERENCE_TEXT_MODEL: z.string().default("gpt-4.1-mini"),
+  INFERENCE_IMAGE_MODEL: z.string().default("gpt-4o-mini"),
+  EMBEDDING_TEXT_MODEL: z.string().default("text-embedding-3-small"),
+  INFERENCE_CONTEXT_LENGTH: z.coerce.number().default(2048),
+  INFERENCE_MAX_OUTPUT_TOKENS: z.coerce.number().default(2048),
+  INFERENCE_SUPPORTS_STRUCTURED_OUTPUT: optionalStringBool(),
+  INFERENCE_OUTPUT_SCHEMA: z
+    .enum(["structured", "json", "plain"])
+    .default("structured"),
+  INFERENCE_ENABLE_AUTO_TAGGING: stringBool("true"),
+  INFERENCE_ENABLE_AUTO_SUMMARIZATION: stringBool("false"),
+  OCR_CACHE_DIR: z.string().optional(),
+  OCR_LANGS: z
+    .string()
+    .default("eng")
+    .transform((val) => val.split(",")),
+  OCR_CONFIDENCE_THRESHOLD: z.coerce.number().default(50),
+  INFERENCE_NUM_WORKERS: z.coerce.number().default(1),
+  SEARCH_NUM_WORKERS: z.coerce.number().default(1),
+  WEBHOOK_NUM_WORKERS: z.coerce.number().default(1),
+  ASSET_PREPROCESSING_NUM_WORKERS: z.coerce.number().default(1),
+  RULE_ENGINE_NUM_WORKERS: z.coerce.number().default(1),
+  LOG_LEVEL: z.string().default("debug"),
+  NO_COLOR: stringBool("false"),
+  DEMO_MODE: stringBool("false"),
+  DEMO_MODE_EMAIL: z.string().optional(),
+  DEMO_MODE_PASSWORD: z.string().optional(),
+  DATA_DIR: z.string().default(""),
+  ASSETS_DIR: z.string().optional(),
+  MAX_ASSET_SIZE_MB: z.coerce.number().default(50),
+  INFERENCE_LANG: z.string().default("english"),
+  WEBHOOK_TIMEOUT_SEC: z.coerce.number().default(5),
+  WEBHOOK_RETRY_TIMES: z.coerce.number().int().min(0).default(3),
+  // Build only flag
+  SERVER_VERSION: z.string().optional(),
+  DISABLE_NEW_RELEASE_CHECK: stringBool("false"),
+
+  // Prometheus metrics configuration
+  PROMETHEUS_AUTH_TOKEN: z.string().optional(),
+
+  RATE_LIMITING_ENABLED: stringBool("false"),
+
+  // Email configuration
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional().default(587),
+  SMTP_SECURE: stringBool("false"),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+  EMAIL_VERIFICATION_REQUIRED: stringBool("false"),
+
+  // Asset storage configuration
+  ASSET_STORE_S3_ENDPOINT: z.string().optional(),
+  ASSET_STORE_S3_REGION: z.string().optional(),
+  ASSET_STORE_S3_BUCKET: z.string().optional(),
+  ASSET_STORE_S3_ACCESS_KEY_ID: z.string().optional(),
+  ASSET_STORE_S3_SECRET_ACCESS_KEY: z.string().optional(),
+  ASSET_STORE_S3_FORCE_PATH_STYLE: stringBool("false"),
+  // Database configuration
+  DB_WAL_MODE: stringBool("false"),
+});
+
+const serverConfigSchema = allEnv.transform((val, ctx) => {
+  const obj = {
+    port: val.PORT,
+    workers: {
+      host: val.WORKERS_HOST,
+      port: val.WORKERS_PORT,
+      enabledWorkers: val.WORKERS_ENABLED_WORKERS,
+      disabledWorkers: val.WORKERS_DISABLED_WORKERS,
+    },
+    apiUrl: val.API_URL,
+    publicUrl: val.BETTER_AUTH_URL,
+    publicApiUrl: `${val.BETTER_AUTH_URL}/api`,
+    signingSecret: () => {
+      if (!val.BETTER_AUTH_SECRET) {
+        throw new Error("BETTER_AUTH_SECRET is not set");
+      }
+      return val.BETTER_AUTH_SECRET;
+    },
+    auth: {
+      disableSignups: val.DISABLE_SIGNUPS,
+      disablePasswordAuth: val.DISABLE_PASSWORD_AUTH,
+      emailVerificationRequired: val.EMAIL_VERIFICATION_REQUIRED,
+      oauth: {
+        allowDangerousEmailAccountLinking:
+          val.OAUTH_ALLOW_DANGEROUS_EMAIL_ACCOUNT_LINKING,
+        wellKnownUrl: val.OAUTH_WELLKNOWN_URL,
+        clientSecret: val.OAUTH_CLIENT_SECRET,
+        clientId: val.OAUTH_CLIENT_ID,
+        scope: val.OAUTH_SCOPE,
+        name: val.OAUTH_PROVIDER_NAME,
+        timeout: val.OAUTH_TIMEOUT,
+      },
+    },
+    email: {
+      smtp: val.SMTP_HOST
+        ? {
+            host: val.SMTP_HOST,
+            port: val.SMTP_PORT,
+            secure: val.SMTP_SECURE,
+            user: val.SMTP_USER,
+            password: val.SMTP_PASSWORD,
+            from: val.SMTP_FROM,
+          }
+        : undefined,
+    },
+    inference: {
+      isConfigured: !!val.OPENAI_API_KEY || !!val.OLLAMA_BASE_URL,
+      numWorkers: val.INFERENCE_NUM_WORKERS,
+      jobTimeoutSec: val.INFERENCE_JOB_TIMEOUT_SEC,
+      fetchTimeoutSec: val.INFERENCE_FETCH_TIMEOUT_SEC,
+      openAIApiKey: val.OPENAI_API_KEY,
+      openAIBaseUrl: val.OPENAI_BASE_URL,
+      ollamaBaseUrl: val.OLLAMA_BASE_URL,
+      ollamaKeepAlive: val.OLLAMA_KEEP_ALIVE,
+      textModel: val.INFERENCE_TEXT_MODEL,
+      imageModel: val.INFERENCE_IMAGE_MODEL,
+      inferredTagLang: val.INFERENCE_LANG,
+      contextLength: val.INFERENCE_CONTEXT_LENGTH,
+      maxOutputTokens: val.INFERENCE_MAX_OUTPUT_TOKENS,
+      outputSchema:
+        val.INFERENCE_SUPPORTS_STRUCTURED_OUTPUT !== undefined
+          ? val.INFERENCE_SUPPORTS_STRUCTURED_OUTPUT
+            ? ("structured" as const)
+            : ("plain" as const)
+          : val.INFERENCE_OUTPUT_SCHEMA,
+      enableAutoTagging: val.INFERENCE_ENABLE_AUTO_TAGGING,
+      enableAutoSummarization: val.INFERENCE_ENABLE_AUTO_SUMMARIZATION,
+    },
+    embedding: {
+      textModel: val.EMBEDDING_TEXT_MODEL,
+    },
+    ocr: {
+      langs: val.OCR_LANGS,
+      cacheDir: val.OCR_CACHE_DIR,
+      confidenceThreshold: val.OCR_CONFIDENCE_THRESHOLD,
+    },
+    search: {
+      numWorkers: val.SEARCH_NUM_WORKERS,
+    },
+    logLevel: val.LOG_LEVEL,
+    logNoColor: val.NO_COLOR,
+    demoMode: val.DEMO_MODE
+      ? {
+          email: val.DEMO_MODE_EMAIL,
+          password: val.DEMO_MODE_PASSWORD,
+        }
+      : undefined,
+    dataDir: val.DATA_DIR,
+    assetsDir: val.ASSETS_DIR ?? path.join(val.DATA_DIR, "assets"),
+    maxAssetSizeMb: val.MAX_ASSET_SIZE_MB,
+    serverVersion: val.SERVER_VERSION,
+    disableNewReleaseCheck: val.DISABLE_NEW_RELEASE_CHECK,
+    webhook: {
+      timeoutSec: val.WEBHOOK_TIMEOUT_SEC,
+      retryTimes: val.WEBHOOK_RETRY_TIMES,
+      numWorkers: val.WEBHOOK_NUM_WORKERS,
+    },
+    assetPreprocessing: {
+      numWorkers: val.ASSET_PREPROCESSING_NUM_WORKERS,
+    },
+    ruleEngine: {
+      numWorkers: val.RULE_ENGINE_NUM_WORKERS,
+    },
+    assetStore: {
+      type: val.ASSET_STORE_S3_ENDPOINT
+        ? ("s3" as const)
+        : ("filesystem" as const),
+      s3: {
+        endpoint: val.ASSET_STORE_S3_ENDPOINT,
+        region: val.ASSET_STORE_S3_REGION,
+        bucket: val.ASSET_STORE_S3_BUCKET,
+        accessKeyId: val.ASSET_STORE_S3_ACCESS_KEY_ID,
+        secretAccessKey: val.ASSET_STORE_S3_SECRET_ACCESS_KEY,
+        forcePathStyle: val.ASSET_STORE_S3_FORCE_PATH_STYLE,
+      },
+    },
+    prometheus: {
+      metricsToken:
+        val.PROMETHEUS_AUTH_TOKEN ?? crypto.randomBytes(64).toString("hex"),
+    },
+    database: {
+      walMode: val.DB_WAL_MODE,
+    },
+    rateLimiting: {
+      enabled: val.RATE_LIMITING_ENABLED,
+    },
+  };
+  if (obj.auth.emailVerificationRequired && !obj.email.smtp) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "To enable email verification, SMTP settings must be configured",
+      fatal: true,
+    });
+    return z.NEVER;
+  }
+  return obj;
+});
+
+const serverConfig = serverConfigSchema.parse(process.env);
+// Always explicitly pick up stuff from server config to avoid accidentally leaking stuff
+export const clientConfig = {
+  publicUrl: serverConfig.publicUrl,
+  publicApiUrl: serverConfig.publicApiUrl,
+  demoMode: serverConfig.demoMode,
+  auth: {
+    disableSignups: serverConfig.auth.disableSignups,
+    disablePasswordAuth: serverConfig.auth.disablePasswordAuth,
+  },
+  inference: {
+    isConfigured: serverConfig.inference.isConfigured,
+    inferredTagLang: serverConfig.inference.inferredTagLang,
+  },
+  serverVersion: serverConfig.serverVersion,
+  disableNewReleaseCheck: serverConfig.disableNewReleaseCheck,
+};
+export type ClientConfig = typeof clientConfig;
+
+export default serverConfig;

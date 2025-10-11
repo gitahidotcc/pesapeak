@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@pesapeak/trpc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "oxlint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pesapeak/db": "workspace:*",
+    "@pesapeak/shared": "workspace:*",
+    "bcryptjs": "^3.0.2",
+    "nodemailer": "^7.0.9",
+    "prom-client": "^15.1.3",
+    "tiny-invariant": "^1.3.3"
+  },
+  "devDependencies": {
+    "@pesapeak/prettier-config": "workspace:*",
+    "@pesapeak/tsconfig": "workspace:*",
+    "@types/nodemailer": "^7.0.2"
+  },
+  "prettier": "@pesapeak/prettier-config"
+}

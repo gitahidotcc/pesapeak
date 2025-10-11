@@ -21,6 +21,10 @@ coverage
 # Vercel
 .vercel
 
+# The sqlite database
+**/*.db
+data
+
 # Build Outputs
 .next/
 out/

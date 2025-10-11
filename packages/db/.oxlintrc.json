@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["@pesapeak/oxlint-config/base"],
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    "drizzle/"
+  ]
+}
