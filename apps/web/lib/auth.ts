@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
+import Database from "better-sqlite3";
 import serverConfig from "@pesapeak/shared/config";
 
 export const auth = betterAuth({
+  // database: new Database(serverConfig.dataDir + "/db.db"),
   emailAndPassword: {
     enabled: !serverConfig.auth.disablePasswordAuth,
     requireEmailVerification: serverConfig.auth.emailVerificationRequired,

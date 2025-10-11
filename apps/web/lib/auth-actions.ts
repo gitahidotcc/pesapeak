@@ -59,3 +59,21 @@ export async function signOutAction() {
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
+
+export async function signOutFormAction() {
+  "use server";
+  
+  try {
+    await auth.api.signOut({
+      headers: await headers(),
+    });
+    
+    // Redirect to sign-in page after successful sign out
+    const { redirect } = await import("next/navigation");
+    redirect("/auth/sign-in");
+  } catch (error) {
+    // In case of error, still redirect to sign-in page
+    const { redirect } = await import("next/navigation");
+    redirect("/auth/sign-in");
+  }
+}
