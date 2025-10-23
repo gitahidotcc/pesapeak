@@ -1,5 +1,6 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativewind } = require('nativewind/metro');
 const path = require('path');
 
 // Find the workspace root
@@ -27,4 +28,5 @@ config.resolver.extraNodeModules = {
   'react-native': path.resolve(projectRoot, 'node_modules/react-native'),
 };
 
-module.exports = config;
+// Wrap with NativeWind for CSS support
+module.exports = withNativewind(config);
