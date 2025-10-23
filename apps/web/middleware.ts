@@ -4,10 +4,19 @@ import { getSessionCookie } from "better-auth/cookies";
 export async function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
 
+  // Redirect root page to auth for unauthenticated users
+  if (request.nextUrl.pathname === "/") {
+    if (!sessionCookie) {
+      return NextResponse.redirect(new URL("/auth/sign-in", request.url));
+    } else {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   // Check if user is trying to access protected routes
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     if (!sessionCookie) {
-      return NextResponse.redirect(new URL("/sign-in", request.url));
+      return NextResponse.redirect(new URL("/auth/sign-in", request.url));
     }
   }
 
@@ -21,6 +30,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/auth/:path*",
   ],

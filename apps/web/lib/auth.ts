@@ -4,7 +4,7 @@ import Database from "better-sqlite3";
 import serverConfig from "@pesapeak/shared/config";
 
 export const auth = betterAuth({
-  // database: new Database(serverConfig.dataDir + "/db.db"),
+  database: new Database(serverConfig.dataDir + "/db.db"),
   emailAndPassword: {
     enabled: !serverConfig.auth.disablePasswordAuth,
     requireEmailVerification: serverConfig.auth.emailVerificationRequired,
