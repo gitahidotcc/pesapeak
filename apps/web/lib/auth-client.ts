@@ -10,6 +10,5 @@ export const {
   useSession,
   signIn,
   signOut,
-  signUp,
   getSession,
 } = authClient;

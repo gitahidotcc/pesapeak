@@ -30,7 +30,11 @@ data
 out/
 build
 dist
+.husky/
 
+# AI tools
+.cursor/
+.claude/
 
 # Debug
 npm-debug.log*
