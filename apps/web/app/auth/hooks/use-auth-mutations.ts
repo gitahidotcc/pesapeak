@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { api } from "@/lib/trpc";
 import { signInSchema, signUpSchema, forgotPasswordSchema, resetPasswordSchema } from "../validations/auth";
 import type { 
   SignInFormData, 

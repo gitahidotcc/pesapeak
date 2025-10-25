@@ -8,12 +8,8 @@ export function AuthLogo() {
         alt="PesaPeak"
         width={120}
         height={40}
-        className="h-10 w-auto"
+        className="w-[120px] h-auto"
         priority
-        style={{
-          width: 'auto',
-          height: '2.5rem',
-        }}
       />
     </div>
   );
