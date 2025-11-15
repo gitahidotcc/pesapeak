@@ -8,18 +8,40 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthForm } from "../components/auth-form";
 import { PasswordField } from "../components/password-field";
 import { SocialAuth } from "../components/social-auth";
+import { AccountExistsMessage } from "../components/account-exists-message";
 import { useSignUpForm } from "../hooks/use-sign-up-form";
 import { useServerConfig } from "@/lib/hooks/use-server-config";
+import { api } from "@/lib/trpc";
 
 export default function SignUpPage() {
   const { auth } = useServerConfig();
+  const { data: accountCheck, isLoading: checkingAccount } = api.users.checkAccountExists.useQuery();
+  
   const {
     formData,
     errors,
     updateField,
     handleSubmit,
     isLoading,
+    error,
+    clearError,
   } = useSignUpForm();
+
+  // Show loading state while checking
+  if (checkingAccount) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="flex items-center justify-center p-8">
+          <div className="text-muted-foreground">Checking...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show account exists message if account already exists
+  if (accountCheck?.exists) {
+    return <AccountExistsMessage />;
+  }
 
   const footer = (
     <div className="space-y-4">
@@ -49,6 +71,21 @@ export default function SignUpPage() {
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             Registration is currently disabled. This is a single-user system and an account may already exist.
+          </AlertDescription>
+        </Alert>
+      )}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={clearError}
+              className="ml-2 text-sm underline hover:no-underline"
+              type="button"
+            >
+              Dismiss
+            </button>
           </AlertDescription>
         </Alert>
       )}

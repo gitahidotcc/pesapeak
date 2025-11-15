@@ -20,6 +20,18 @@ import {
 import { User } from "../models/users";
 
 export const usersAppRouter = router({
+  checkAccountExists: publicProcedure
+    .output(
+      z.object({
+        exists: z.boolean(),
+      }),
+    )
+    .query(async ({ ctx }) => {
+      const [{ count: userCount }] = await ctx.db
+        .select({ count: count() })
+        .from(users);
+      return { exists: userCount > 0 };
+    }),
   create: publicProcedure
     .use(
       createRateLimitMiddleware({
@@ -59,7 +71,7 @@ export const usersAppRouter = router({
       if (userCount > 0) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Registration is closed. This is a single-user system and an account already exists.",
+          message: "An account already exists. This is a single-user system. Please sign in instead.",
         });
       }
 

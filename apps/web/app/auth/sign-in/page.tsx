@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthForm } from "../components/auth-form";
 import { SocialAuth } from "../components/social-auth";
 import { useSignInForm } from "../hooks/use-sign-in-form";
@@ -15,6 +17,8 @@ export default function SignInPage() {
     updateField,
     handleSubmit,
     isLoading,
+    error,
+    clearError,
   } = useSignInForm();
 
   const footer = (
@@ -58,6 +62,21 @@ export default function SignInPage() {
       isLoading={isLoading}
       footer={footer}
     >
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={clearError}
+              className="ml-2 text-sm underline hover:no-underline"
+              type="button"
+            >
+              Dismiss
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>

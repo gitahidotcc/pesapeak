@@ -40,4 +40,7 @@ export const auth = betterAuth({
   },
 });
 
+// Default export for Better Auth CLI
+export default auth;
+
 export type Session = typeof auth.$Infer.Session;

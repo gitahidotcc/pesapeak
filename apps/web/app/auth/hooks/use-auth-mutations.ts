@@ -27,7 +27,13 @@ export function useSignInMutation() {
       });
 
       if (result.error) {
-        throw new Error(result.error.message || "Sign in failed");
+        // Create error with more context
+        const error = new Error(result.error.message || "Sign in failed");
+        // Attach error code if available
+        if (result.error.code) {
+          (error as any).code = result.error.code;
+        }
+        throw error;
       }
 
       return { success: true, user: result.data?.user };
@@ -45,32 +51,41 @@ export function useSignInMutation() {
 // Sign Up Mutation
 export function useSignUpMutation() {
   const router = useRouter();
-  const createUserMutation = api.users.create.useMutation();
+  const utils = api.useUtils();
   
   return useMutation({
     mutationFn: async (data: SignUpFormData) => {
       // Validate data with Zod
       const validatedData = signUpSchema.parse(data);
       
-      // Use tRPC for user creation (enforces single-user check)
-      const user = await createUserMutation.mutateAsync({
-        name: validatedData.fullName,
+      // Check if account already exists (single-user system) using tRPC
+      const accountCheck = await utils.users.checkAccountExists.fetch();
+      if (accountCheck?.exists) {
+        throw new Error("An account already exists. This is a single-user system. Please sign in instead.");
+      }
+
+      // Use Better Auth for sign up (creates user in Better Auth's database)
+      const signUpResult = await authClient.signUp.email({
         email: validatedData.email,
         password: validatedData.password,
-        confirmPassword: validatedData.confirmPassword,
+        name: validatedData.fullName,
       });
 
-      // After successful user creation, sign in with Better Auth
+      if (signUpResult.error) {
+        throw new Error(signUpResult.error.message || "Sign up failed");
+      }
+
+      // Auto sign in after successful sign up
       const signInResult = await authClient.signIn.email({
         email: validatedData.email,
         password: validatedData.password,
       });
 
       if (signInResult.error) {
-        throw new Error(signInResult.error.message || "Auto sign-in failed");
+        throw new Error(signInResult.error.message || "Auto sign-in failed. Please sign in manually.");
       }
 
-      return { success: true, user };
+      return { success: true, user: signUpResult.data?.user };
     },
     onSuccess: () => {
       // Redirect to dashboard on successful sign up

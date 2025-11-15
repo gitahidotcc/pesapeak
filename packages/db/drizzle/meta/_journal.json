@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1760210719625,
-      "tag": "0000_wild_masked_marvel",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1760213890453,
-      "tag": "0001_great_nebula",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1760216324916,
-      "tag": "0002_clumsy_impossible_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1761228234850,
-      "tag": "0003_familiar_sunset_bain",
+      "when": 1763216113866,
+      "tag": "0000_great_iron_man",
       "breakpoints": true
     }
   ]

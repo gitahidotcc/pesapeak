@@ -22,6 +22,12 @@ function modifiedAtField() {
     .$onUpdate(() => new Date());
 }
 
+function updatedAtField() {
+  return integer("updatedAt", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .$onUpdate(() => new Date());
+}
+
 
 
 
@@ -37,6 +43,8 @@ export const users = sqliteTable("user", {
   password: text("password"),
   salt: text("salt").notNull().default(""),
   role: text("role", { enum: ["admin", "user"] }).default("user"),
+  createdAt: createdAtField(),
+  updatedAt: updatedAtField(),
 
   // User Settings
   timezone: text("timezone").default("UTC"),
@@ -99,7 +107,7 @@ export const sessions = sqliteTable("session", {
   expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
   token: text("token").notNull().unique(),
   createdAt: createdAtField(),
-  updatedAt: modifiedAtField(),
+  updatedAt: updatedAtField(),
   ipAddress: text("ipAddress"),
   userAgent: text("userAgent"),
 });
@@ -122,7 +130,7 @@ export const accounts = sqliteTable("account", {
   scope: text("scope"),
   password: text("password"),
   createdAt: createdAtField(),
-  updatedAt: modifiedAtField(),
+  updatedAt: updatedAtField(),
 });
 
 export const verifications = sqliteTable("verification", {
@@ -134,7 +142,7 @@ export const verifications = sqliteTable("verification", {
   value: text("value").notNull(),
   expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
   createdAt: createdAtField(),
-  updatedAt: modifiedAtField(),
+  updatedAt: updatedAtField(),
 });
 
 // Relations
