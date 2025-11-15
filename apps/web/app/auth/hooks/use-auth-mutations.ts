@@ -1,5 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/trpc";
+import { authClient } from "@/lib/auth-client";
 import { signInSchema, signUpSchema, forgotPasswordSchema, resetPasswordSchema } from "../validations/auth";
 import type { 
   SignInFormData, 
@@ -10,104 +12,125 @@ import type {
 
 // Sign In Mutation
 export function useSignInMutation() {
+  const router = useRouter();
+  
   return useMutation({
     mutationFn: async (data: SignInFormData) => {
       // Validate data with Zod
       const validatedData = signInSchema.parse(data);
       
-      // TODO: Replace with actual API call
-      console.log("Sign in:", validatedData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return { success: true, user: { email: validatedData.email } };
+      // Use Better Auth for sign in
+      const result = await authClient.signIn.email({
+        email: validatedData.email,
+        password: validatedData.password,
+        rememberMe: validatedData.rememberMe,
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message || "Sign in failed");
+      }
+
+      return { success: true, user: result.data?.user };
     },
-    onSuccess: (data) => {
-      console.log("Sign in successful:", data);
-      // TODO: Handle successful sign in (redirect, store session, etc.)
+    onSuccess: () => {
+      // Redirect to dashboard on successful sign in
+      router.push("/dashboard");
     },
     onError: (error) => {
       console.error("Sign in failed:", error);
-      // TODO: Handle sign in error
     },
   });
 }
 
 // Sign Up Mutation
 export function useSignUpMutation() {
+  const router = useRouter();
+  const createUserMutation = api.users.create.useMutation();
+  
   return useMutation({
     mutationFn: async (data: SignUpFormData) => {
       // Validate data with Zod
       const validatedData = signUpSchema.parse(data);
       
-      // TODO: Replace with actual API call
-      console.log("Sign up:", validatedData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return { success: true, user: { email: validatedData.email } };
+      // Use tRPC for user creation (enforces single-user check)
+      const user = await createUserMutation.mutateAsync({
+        name: validatedData.fullName,
+        email: validatedData.email,
+        password: validatedData.password,
+        confirmPassword: validatedData.confirmPassword,
+      });
+
+      // After successful user creation, sign in with Better Auth
+      const signInResult = await authClient.signIn.email({
+        email: validatedData.email,
+        password: validatedData.password,
+      });
+
+      if (signInResult.error) {
+        throw new Error(signInResult.error.message || "Auto sign-in failed");
+      }
+
+      return { success: true, user };
     },
-    onSuccess: (data) => {
-      console.log("Sign up successful:", data);
-      // TODO: Handle successful sign up (redirect, store session, etc.)
+    onSuccess: () => {
+      // Redirect to dashboard on successful sign up
+      router.push("/dashboard");
     },
     onError: (error) => {
       console.error("Sign up failed:", error);
-      // TODO: Handle sign up error
     },
   });
 }
 
 // Forgot Password Mutation
 export function useForgotPasswordMutation() {
+  const forgotPasswordMutation = api.users.forgotPassword.useMutation();
+  
   return useMutation({
     mutationFn: async (data: ForgotPasswordFormData) => {
       // Validate data with Zod
       const validatedData = forgotPasswordSchema.parse(data);
       
-      // TODO: Replace with actual API call
-      console.log("Forgot password:", validatedData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use tRPC for forgot password
+      await forgotPasswordMutation.mutateAsync({
+        email: validatedData.email,
+      });
       
       return { success: true, message: "Reset link sent to your email" };
     },
     onSuccess: (data) => {
       console.log("Forgot password successful:", data);
-      // TODO: Handle successful forgot password
     },
     onError: (error) => {
       console.error("Forgot password failed:", error);
-      // TODO: Handle forgot password error
     },
   });
 }
 
 // Reset Password Mutation
 export function useResetPasswordMutation() {
+  const router = useRouter();
+  const resetPasswordMutation = api.users.resetPassword.useMutation();
+  
   return useMutation({
     mutationFn: async (data: ResetPasswordFormData) => {
       // Validate data with Zod
       const validatedData = resetPasswordSchema.parse(data);
       
-      // TODO: Replace with actual API call
-      console.log("Reset password:", validatedData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use tRPC for reset password
+      await resetPasswordMutation.mutateAsync({
+        token: validatedData.token,
+        newPassword: validatedData.password,
+      });
       
       return { success: true, message: "Password reset successfully" };
     },
-    onSuccess: (data) => {
-      console.log("Reset password successful:", data);
-      // TODO: Handle successful password reset
+    onSuccess: () => {
+      // Redirect to sign in page on successful reset
+      router.push("/auth/sign-in");
     },
     onError: (error) => {
       console.error("Reset password failed:", error);
-      // TODO: Handle reset password error
     },
   });
 }

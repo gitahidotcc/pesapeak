@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { count } from "drizzle-orm";
+import { users } from "@pesapeak/db/schema";
 import serverConfig from "@pesapeak/shared/config";
 import {
   zResetPasswordSchema,
@@ -48,6 +50,19 @@ export const usersAppRouter = router({
           message: errorMessage,
         });
       }
+
+      // Check if any users already exist (single-tenant system)
+      const [{ count: userCount }] = await ctx.db
+        .select({ count: count() })
+        .from(users);
+
+      if (userCount > 0) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Registration is closed. This is a single-user system and an account already exists.",
+        });
+      }
+
       const user = await User.create(ctx, input);
       return {
         id: user.id,

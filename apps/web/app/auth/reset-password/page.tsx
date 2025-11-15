@@ -1,56 +1,46 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PasswordField } from "../components/password-field";
-import { useResetPasswordMutation } from "../hooks/use-auth-mutations";
-import { resetPasswordSchema } from "../validations/auth";
-import type { ResetPasswordFormData } from "../validations/auth";
+import { useResetPasswordForm } from "../hooks/use-reset-password-form";
 
 export default function ResetPasswordPage() {
-  const [formData, setFormData] = useState<ResetPasswordFormData>({
-    password: "",
-    confirmPassword: "",
-  });
-  const [errors, setErrors] = useState<Partial<ResetPasswordFormData>>({});
-  const [success, setSuccess] = useState(false);
+  const {
+    formData,
+    errors,
+    updateField,
+    handleSubmit,
+    success,
+    token,
+    isLoading,
+  } = useResetPasswordForm();
 
-  const resetPasswordMutation = useResetPasswordMutation();
-
-  const handleInputChange = (field: keyof ResetPasswordFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      // Validate with Zod
-      const validatedData = resetPasswordSchema.parse(formData);
-      setErrors({});
-      
-      // Submit mutation
-      await resetPasswordMutation.mutateAsync(validatedData);
-      setSuccess(true);
-    } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        // Zod validation errors
-        const zodErrors = error as any;
-        const fieldErrors: Partial<ResetPasswordFormData> = {};
-        zodErrors.issues.forEach((issue: any) => {
-          fieldErrors[issue.path[0] as keyof ResetPasswordFormData] = issue.message;
-        });
-        setErrors(fieldErrors);
-      }
-    }
-  };
+  // Show error if no token is provided
+  if (!token) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold text-destructive">Invalid Reset Link</CardTitle>
+          <CardDescription>
+            This password reset link is invalid or has expired. Please request a new one.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Link href="/auth/forgot-password">
+            <Button className="w-full">Request New Reset Link</Button>
+          </Link>
+          <div className="text-center">
+            <Link href="/auth/sign-in" className="text-primary hover:text-primary/80">
+              Back to sign in
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (success) {
     return (
@@ -88,7 +78,7 @@ export default function ResetPasswordPage() {
             label="New Password"
             placeholder="Enter your new password"
             value={formData.password}
-            onChange={(value) => handleInputChange("password", value)}
+            onChange={(value) => updateField("password", value)}
             error={errors.password}
             required
             autoComplete="new-password"
@@ -99,7 +89,7 @@ export default function ResetPasswordPage() {
             label="Confirm New Password"
             placeholder="Confirm your new password"
             value={formData.confirmPassword}
-            onChange={(value) => handleInputChange("confirmPassword", value)}
+            onChange={(value) => updateField("confirmPassword", value)}
             error={errors.confirmPassword}
             required
             autoComplete="new-password"
@@ -108,9 +98,9 @@ export default function ResetPasswordPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={resetPasswordMutation.isPending}
+            disabled={isLoading}
           >
-            {resetPasswordMutation.isPending ? "Resetting password..." : "Reset password"}
+            {isLoading ? "Resetting password..." : "Reset password"}
           </Button>
         </form>
 

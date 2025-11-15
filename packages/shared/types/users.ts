@@ -48,3 +48,5 @@ export type ZUserSettings = z.infer<typeof zUserSettingsSchema>;
 export const zUpdateUserSettingsSchema = zUserSettingsSchema.partial().pick({
   timezone: true,
 });
+
+export type ZChangePassword = z.infer<typeof zChangePasswordSchema>;

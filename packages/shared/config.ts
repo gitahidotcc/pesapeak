@@ -6,8 +6,14 @@ const stringBool = (defaultValue: string) =>
   z
     .string()
     .default(defaultValue)
-    .refine((s) => s === "true" || s === "false")
-    .transform((s) => s === "true");
+    .transform((s) => {
+      // Handle empty string or falsy values
+      if (!s || s === "") return defaultValue === "true";
+      // Handle "true" or "false" strings
+      if (s === "true" || s === "false") return s === "true";
+      // For any other value, return the default
+      return defaultValue === "true";
+    });
 
 const optionalStringBool = () =>
   z
@@ -269,6 +275,10 @@ export const clientConfig = {
   auth: {
     disableSignups: serverConfig.auth.disableSignups,
     disablePasswordAuth: serverConfig.auth.disablePasswordAuth,
+  },
+  email: {
+    smtpConfigured: !!serverConfig.email.smtp,
+    emailVerificationRequired: serverConfig.auth.emailVerificationRequired,
   },
   inference: {
     isConfigured: serverConfig.inference.isConfigured,
