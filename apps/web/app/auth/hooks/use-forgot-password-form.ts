@@ -22,10 +22,30 @@ export function useForgotPasswordForm() {
 
     try {
       await mutation.mutateAsync(form.formData);
+      // Always show success message for security (don't reveal if email exists)
+      // Backend always returns success even if user doesn't exist to prevent email enumeration
       setSuccess(true);
     } catch (error) {
-      // Errors are handled by the mutation and form validation
-      console.error("Forgot password error:", error);
+      // Log the error for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Forgot password error:", {
+        error,
+        message: errorMessage,
+      });
+      
+      // Only show success if it's not an SMTP/email configuration error
+      // SMTP errors should be visible to the user since they indicate a server configuration issue
+      if (errorMessage.includes("Email service is not configured") || 
+          errorMessage.includes("SMTP") ||
+          errorMessage.includes("connection failed") ||
+          errorMessage.includes("Failed to send")) {
+        // Don't show success for SMTP errors - these are server configuration issues
+        // The form is already disabled if SMTP is not configured, but we should still handle runtime errors
+        throw error; // Re-throw to let the UI handle it
+      } else {
+        // For other errors (including user not found), show success to prevent enumeration
+        setSuccess(true);
+      }
     }
   };
 

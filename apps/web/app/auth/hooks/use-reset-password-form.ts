@@ -49,6 +49,7 @@ export function useResetPasswordForm() {
     success,
     token,
     isLoading: mutation.isPending,
+    error: mutation.error,
   };
 }
 

@@ -99,18 +99,21 @@ export function useSignUpMutation() {
 
 // Forgot Password Mutation
 export function useForgotPasswordMutation() {
-  const forgotPasswordMutation = api.users.forgotPassword.useMutation();
-  
   return useMutation({
     mutationFn: async (data: ForgotPasswordFormData) => {
       // Validate data with Zod
       const validatedData = forgotPasswordSchema.parse(data);
       
-      // Use tRPC for forgot password
-      await forgotPasswordMutation.mutateAsync({
+      // Use Better Auth's requestPasswordReset
+      const result = await authClient.requestPasswordReset({
         email: validatedData.email,
+        redirectTo: `${window.location.origin}/auth/reset-password?token=`,
       });
-      
+
+      if (result.error) {
+        throw new Error(result.error.message || "Failed to send password reset email");
+      }
+
       return { success: true, message: "Reset link sent to your email" };
     },
     onSuccess: (data) => {
@@ -125,19 +128,22 @@ export function useForgotPasswordMutation() {
 // Reset Password Mutation
 export function useResetPasswordMutation() {
   const router = useRouter();
-  const resetPasswordMutation = api.users.resetPassword.useMutation();
   
   return useMutation({
     mutationFn: async (data: ResetPasswordFormData) => {
       // Validate data with Zod
       const validatedData = resetPasswordSchema.parse(data);
       
-      // Use tRPC for reset password
-      await resetPasswordMutation.mutateAsync({
+      // Use Better Auth's resetPassword
+      const result = await authClient.resetPassword({
         token: validatedData.token,
         newPassword: validatedData.password,
       });
-      
+
+      if (result.error) {
+        throw new Error(result.error.message || "Failed to reset password");
+      }
+
       return { success: true, message: "Password reset successfully" };
     },
     onSuccess: () => {

@@ -16,10 +16,11 @@ export default function ResetPasswordPage() {
     success,
     token,
     isLoading,
+    error,
   } = useResetPasswordForm();
 
-  // Show error if no token is provided
-  if (!token) {
+  // Show error if no token is provided or token is invalid
+  if (!token || token === "INVALID_TOKEN") {
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="space-y-1 text-center">
@@ -72,6 +73,13 @@ export default function ResetPasswordPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+            <p className="text-sm text-destructive">
+              {error instanceof Error ? error.message : "Failed to reset password. Please try again."}
+            </p>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <PasswordField
             id="password"

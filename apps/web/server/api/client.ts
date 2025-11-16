@@ -48,13 +48,12 @@ export const createContext = async (
   
   let user: Context["user"] = null;
   if (session?.user) {
-    // Fetch user from database to get the role
+    // Fetch user from database
     const dbUser = await (database ?? db)
       .select({
         id: users.id,
         name: users.name,
         email: users.email,
-        role: users.role,
       })
       .from(users)
       .where(eq(users.id, session.user.id))
@@ -66,7 +65,6 @@ export const createContext = async (
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
-        role: dbUser.role ?? null,
       };
     }
   }

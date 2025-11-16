@@ -15,7 +15,6 @@ interface User {
   id: string;
   name?: string | null | undefined;
   email?: string | null | undefined;
-  role: "admin" | "user" | null;
 }
 
 export interface Context {
@@ -120,13 +119,6 @@ export const authedProcedure = procedure
     });
   });
 
-export const adminProcedure = authedProcedure.use(function isAdmin(opts) {
-  const user = opts.ctx.user;
-  if (user.role != "admin") {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-  return opts.next(opts);
-});
 
 // Export the rate limiting utilities for use in routers
 export { createRateLimitMiddleware };

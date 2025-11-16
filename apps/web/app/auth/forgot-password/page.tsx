@@ -21,7 +21,10 @@ export default function ForgotPasswordPage() {
     success,
     setSuccess,
     isLoading,
+    mutation,
   } = useForgotPasswordForm();
+  
+  const error = mutation.error;
 
   if (success) {
     return (
@@ -32,7 +35,7 @@ export default function ForgotPasswordPage() {
           </div>
           <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
           <CardDescription>
-            We've sent a password reset link to <span className="font-medium">{formData.email}</span>
+            If an account exists with <span className="font-medium">{formData.email}</span>, we've sent a password reset link.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -73,6 +76,15 @@ export default function ForgotPasswordPage() {
             <AlertDescription>
               Password reset via email is not available. SMTP email service is not configured. 
               Please use the Change Password feature in settings if you're already signed in.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {error instanceof Error ? error.message : "Failed to send password reset email. Please check your SMTP configuration and try again."}
             </AlertDescription>
           </Alert>
         )}

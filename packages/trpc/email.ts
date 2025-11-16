@@ -124,6 +124,7 @@ export async function sendPasswordResetEmail(
   email: string,
   name: string,
   token: string,
+  resetUrl?: string,
 ) {
   if (!serverConfig.email.smtp) {
     throw new Error("SMTP is not configured");
@@ -142,7 +143,16 @@ export async function sendPasswordResetEmail(
         : undefined,
   });
 
-  const resetUrl = `${serverConfig.publicUrl}/reset-password?token=${encodeURIComponent(token)}`;
+  // Verify connection before sending
+  try {
+    await transporter.verify();
+  } catch (error) {
+    console.error("SMTP connection verification failed:", error);
+    throw new Error(`SMTP connection failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  // Use provided URL from Better Auth, or construct our own if not provided
+  const url = resetUrl || `${serverConfig.publicUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
 
   const mailOptions = {
     from: serverConfig.email.smtp.from,
@@ -154,12 +164,12 @@ export async function sendPasswordResetEmail(
         <p>Hi ${name},</p>
         <p>You requested to reset your password for your Pesapeak account. Click the link below to reset your password:</p>
         <p>
-          <a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+          <a href="${url}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
             Reset Password
           </a>
         </p>
         <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p><a href="${url}">${url}</a></p>
         <p>This link will expire in 1 hour.</p>
         <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
       </div>
@@ -168,7 +178,7 @@ export async function sendPasswordResetEmail(
 Hi ${name},
 
 You requested to reset your password for your Pesapeak account. Visit this link to reset your password:
-${resetUrl}
+${url}
 
 This link will expire in 1 hour.
 
@@ -176,5 +186,22 @@ If you didn't request a password reset, please ignore this email. Your password 
     `,
   };
 
-  await transporter.sendMail(mailOptions);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Password reset email sent successfully:", {
+      messageId: info.messageId,
+      to: email,
+      accepted: info.accepted,
+      rejected: info.rejected,
+    });
+    return info;
+  } catch (error) {
+    console.error("Failed to send password reset email:", {
+      error,
+      to: email,
+      smtpHost: serverConfig.email.smtp.host,
+      smtpPort: serverConfig.email.smtp.port,
+    });
+    throw error;
+  }
 }

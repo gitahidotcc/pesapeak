@@ -2,12 +2,21 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import Database from "better-sqlite3";
 import serverConfig from "@pesapeak/shared/config";
+import { sendPasswordResetEmail } from "@pesapeak/trpc/email";
 
 export const auth = betterAuth({
   database: new Database(serverConfig.dataDir + "/db.db"),
   emailAndPassword: {
     enabled: !serverConfig.auth.disablePasswordAuth,
     requireEmailVerification: serverConfig.auth.emailVerificationRequired,
+    sendResetPassword: async ({ user, url, token }, request) => {
+      if (!serverConfig.email.smtp) {
+        throw new Error("SMTP is not configured");
+      }
+      
+      // Use our existing email sending function with Better Auth's URL
+      await sendPasswordResetEmail(user.email, user.name || "User", token, url);
+    },
   },
   socialProviders: serverConfig.auth.oauth.clientId && serverConfig.auth.oauth.clientSecret ? {
     google: {

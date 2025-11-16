@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { api } from "@/lib/trpc";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { PasswordField } from "../../auth/components/password-field";
 import { zChangePasswordSchema } from "@pesapeak/shared/types/users";
@@ -17,7 +17,21 @@ export function ChangePasswordForm() {
   const [errors, setErrors] = useState<Partial<ZChangePassword>>({});
   const [success, setSuccess] = useState(false);
 
-  const changePasswordMutation = api.users.changePassword.useMutation();
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const result = await authClient.changePassword({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+        revokeOtherSessions: false,
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message || "Failed to change password");
+      }
+
+      return { success: true };
+    },
+  });
 
   const handleInputChange = (field: keyof ZChangePassword, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -35,7 +49,7 @@ export function ChangePasswordForm() {
       const validatedData = zChangePasswordSchema.parse(formData);
       setErrors({});
       
-      // Submit mutation
+      // Submit mutation using Better Auth
       await changePasswordMutation.mutateAsync({
         currentPassword: validatedData.currentPassword,
         newPassword: validatedData.newPassword,
@@ -48,14 +62,23 @@ export function ChangePasswordForm() {
         newPasswordConfirm: "",
       });
     } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        // Zod validation errors
-        const zodErrors = error as any;
-        const fieldErrors: Partial<ZChangePassword> = {};
-        zodErrors.issues.forEach((issue: any) => {
-          fieldErrors[issue.path[0] as keyof ZChangePassword] = issue.message;
-        });
-        setErrors(fieldErrors);
+      if (error instanceof Error) {
+        // Check if it's a Zod validation error
+        if ('issues' in error) {
+          const zodErrors = error as any;
+          const fieldErrors: Partial<ZChangePassword> = {};
+          zodErrors.issues.forEach((issue: any) => {
+            fieldErrors[issue.path[0] as keyof ZChangePassword] = issue.message;
+          });
+          setErrors(fieldErrors);
+        } else {
+          // Better Auth error - show as general error
+          setErrors({ 
+            currentPassword: error.message.includes("password") || error.message.includes("Password") 
+              ? error.message 
+              : undefined 
+          });
+        }
       }
     }
   };
