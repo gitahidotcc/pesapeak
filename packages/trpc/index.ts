@@ -1,7 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { headers } from "next/headers";
 import { db } from "@pesapeak/db";
 import serverConfig from "@pesapeak/shared/config";
 import { createRateLimitMiddleware } from "./rate-limit";
@@ -122,23 +121,3 @@ export const authedProcedure = procedure
 
 // Export the rate limiting utilities for use in routers
 export { createRateLimitMiddleware };
-
-// Context creator for tRPC
-export async function createContext() {
-  const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for") || 
-             headersList.get("x-real-ip") || 
-             "unknown";
-
-  // For now, we'll set user to null - authentication will be handled by Better Auth
-  // In a real implementation, you might want to verify the session here
-  const user: User | null = null;
-
-  return {
-    user,
-    db,
-    req: {
-      ip,
-    },
-  };
-}
