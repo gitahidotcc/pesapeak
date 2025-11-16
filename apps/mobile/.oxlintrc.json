@@ -1,0 +1,4 @@
+{
+  "extends": ["@pesapeak/oxlint-config/base", "@pesapeak/oxlint-config/react"]
+}
+

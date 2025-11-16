@@ -1,7 +1,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import type { db } from "@pesapeak/db";
+import { db } from "@pesapeak/db";
 import serverConfig from "@pesapeak/shared/config";
 import { createRateLimitMiddleware } from "./rate-limit";
 import {
@@ -14,7 +14,6 @@ interface User {
   id: string;
   name?: string | null | undefined;
   email?: string | null | undefined;
-  role: "admin" | "user" | null;
 }
 
 export interface Context {
@@ -119,13 +118,6 @@ export const authedProcedure = procedure
     });
   });
 
-export const adminProcedure = authedProcedure.use(function isAdmin(opts) {
-  const user = opts.ctx.user;
-  if (user.role != "admin") {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-  return opts.next(opts);
-});
 
 // Export the rate limiting utilities for use in routers
 export { createRateLimitMiddleware };

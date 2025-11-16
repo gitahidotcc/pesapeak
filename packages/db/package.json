@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "migrate": "tsx migrate.ts",
     "generate": "drizzle-kit generate",
+    "push": "drizzle-kit push",
     "studio": "drizzle-kit studio",
     "format": "prettier . --cache --ignore-path ../../.prettierignore --check",
     "format:fix": "prettier . --cache --write --ignore-path ../../.prettierignore",

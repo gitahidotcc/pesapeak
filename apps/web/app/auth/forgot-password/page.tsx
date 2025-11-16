@@ -1,55 +1,30 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useForgotPasswordMutation } from "../hooks/use-auth-mutations";
-import { forgotPasswordSchema } from "../validations/auth";
-import type { ForgotPasswordFormData } from "../validations/auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useForgotPasswordForm } from "../hooks/use-forgot-password-form";
+import { useClientConfig } from "@/lib/client-config";
 
 export default function ForgotPasswordPage() {
-  const [formData, setFormData] = useState<ForgotPasswordFormData>({
-    email: "",
-  });
-  const [errors, setErrors] = useState<Partial<ForgotPasswordFormData>>({});
-  const [success, setSuccess] = useState(false);
-
-  const forgotPasswordMutation = useForgotPasswordMutation();
-
-  const handleInputChange = (value: string) => {
-    setFormData({ email: value });
-    if (errors.email) {
-      setErrors({});
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      // Validate with Zod
-      const validatedData = forgotPasswordSchema.parse(formData);
-      setErrors({});
-      
-      // Submit mutation
-      await forgotPasswordMutation.mutateAsync(validatedData);
-      setSuccess(true);
-    } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        // Zod validation errors
-        const zodErrors = error as any;
-        const fieldErrors: Partial<ForgotPasswordFormData> = {};
-        zodErrors.issues.forEach((issue: any) => {
-          fieldErrors[issue.path[0] as keyof ForgotPasswordFormData] = issue.message;
-        });
-        setErrors(fieldErrors);
-      }
-    }
-  };
+  const clientConfig = useClientConfig();
+  const isSmtpConfigured = clientConfig.email.smtpConfigured;
+  const {
+    formData,
+    errors,
+    updateField,
+    handleSubmit,
+    success,
+    setSuccess,
+    isLoading,
+    mutation,
+  } = useForgotPasswordForm();
+  
+  const error = mutation.error;
 
   if (success) {
     return (
@@ -60,7 +35,7 @@ export default function ForgotPasswordPage() {
           </div>
           <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
           <CardDescription>
-            We've sent a password reset link to <span className="font-medium">{formData.email}</span>
+            If an account exists with <span className="font-medium">{formData.email}</span>, we've sent a password reset link.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -95,6 +70,25 @@ export default function ForgotPasswordPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {!isSmtpConfigured && (
+          <Alert className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Password reset via email is not available. SMTP email service is not configured. 
+              Please use the Change Password feature in settings if you're already signed in.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {error instanceof Error ? error.message : "Failed to send password reset email. Please check your SMTP configuration and try again."}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -103,8 +97,9 @@ export default function ForgotPasswordPage() {
               type="email"
               placeholder="Enter your email"
               value={formData.email}
-              onChange={(e) => handleInputChange(e.target.value)}
+              onChange={(e) => updateField("email", e.target.value)}
               required
+              disabled={!isSmtpConfigured}
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email}</p>
@@ -114,9 +109,9 @@ export default function ForgotPasswordPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={forgotPasswordMutation.isPending}
+            disabled={isLoading || !isSmtpConfigured}
           >
-            {forgotPasswordMutation.isPending ? "Sending reset link..." : "Send reset link"}
+            {isLoading ? "Sending reset link..." : "Send reset link"}
           </Button>
         </form>
 

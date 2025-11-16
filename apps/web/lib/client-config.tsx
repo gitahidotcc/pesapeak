@@ -10,6 +10,9 @@ export const ClientConfigCtx = createContext<ClientConfig>({
     disableSignups: false,
     disablePasswordAuth: false,
   },
+  email: {
+    smtpConfigured: false,
+  },
   inference: {
     isConfigured: false,
     inferredTagLang: "english",

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@pesapeak/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "format": "prettier . --cache --ignore-path ../../.prettierignore --check",
+    "format:fix": "prettier . --cache --write --ignore-path ../../.prettierignore",
+    "lint:fix": "oxlint . --fix",
+    "lint": "oxlint ."
+  },
+  "dependencies": {
+    "@hono/trpc-server": "^0.4.0",
+    "@pesapeak/trpc": "workspace:*",
+    "hono": "^4.10.3"
+  },
+  "devDependencies": {
+    "@pesapeak/oxlint-config": "workspace:^",
+    "@pesapeak/prettier-config": "workspace:*",
+    "@pesapeak/tsconfig": "workspace:*",
+    "typescript": "~5.8.3"
+  },
+  "prettier": "@pesapeak/prettier-config"
+}

@@ -1,57 +1,46 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthForm } from "../components/auth-form";
 import { PasswordField } from "../components/password-field";
-import { SocialAuth } from "../components/social-auth";
-import { useSignUpMutation } from "../hooks/use-auth-mutations";
-import { signUpSchema } from "../validations/auth";
-import type { SignUpFormData } from "../validations/auth";
+import { AccountExistsMessage } from "../components/account-exists-message";
+import { useSignUpForm } from "../hooks/use-sign-up-form";
+import { useServerConfig } from "@/lib/hooks/use-server-config";
+import { api } from "@/lib/trpc";
 
 export default function SignUpPage() {
-  const [formData, setFormData] = useState<SignUpFormData>({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [errors, setErrors] = useState<Partial<SignUpFormData>>({});
+  const { auth } = useServerConfig();
+  const { data: accountCheck, isLoading: checkingAccount } = api.users.checkAccountExists.useQuery();
+  
+  const {
+    formData,
+    errors,
+    updateField,
+    handleSubmit,
+    isLoading,
+    error,
+    clearError,
+  } = useSignUpForm();
 
-  const signUpMutation = useSignUpMutation();
+  // Show loading state while checking
+  if (checkingAccount) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="flex items-center justify-center p-8">
+          <div className="text-muted-foreground">Checking...</div>
+        </div>
+      </div>
+    );
+  }
 
-  const handleInputChange = (field: keyof SignUpFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      // Validate with Zod
-      const validatedData = signUpSchema.parse(formData);
-      setErrors({});
-      
-      // Submit mutation
-      await signUpMutation.mutateAsync(validatedData);
-    } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        // Zod validation errors
-        const zodErrors = error as any;
-        const fieldErrors: Partial<SignUpFormData> = {};
-        zodErrors.issues.forEach((issue: any) => {
-          fieldErrors[issue.path[0] as keyof SignUpFormData] = issue.message;
-        });
-        setErrors(fieldErrors);
-      }
-    }
-  };
+  // Show account exists message if account already exists
+  if (accountCheck?.exists) {
+    return <AccountExistsMessage />;
+  }
 
   const footer = (
     <div className="space-y-4">
@@ -63,8 +52,6 @@ export default function SignUpPage() {
           </Link>
         </p>
       </div>
-
-      <SocialAuth onGoogleSignIn={() => console.log("Google sign up")} />
     </div>
   );
 
@@ -73,9 +60,32 @@ export default function SignUpPage() {
       title="Create your account"
       onSubmit={handleSubmit}
       submitText="Create account"
-      isLoading={signUpMutation.isPending}
+      isLoading={isLoading}
       footer={footer}
     >
+      {auth.disableSignups && (
+        <Alert className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Registration is currently disabled. This is a single-user system and an account may already exist.
+          </AlertDescription>
+        </Alert>
+      )}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={clearError}
+              className="ml-2 text-sm underline hover:no-underline"
+              type="button"
+            >
+              Dismiss
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="fullName">Full Name</Label>
@@ -84,7 +94,7 @@ export default function SignUpPage() {
             type="text"
             placeholder="Enter your full name"
             value={formData.fullName}
-            onChange={(e) => handleInputChange("fullName", e.target.value)}
+            onChange={(e) => updateField("fullName", e.target.value)}
             required
           />
           {errors.fullName && (
@@ -99,7 +109,7 @@ export default function SignUpPage() {
             type="email"
             placeholder="Enter your email"
             value={formData.email}
-            onChange={(e) => handleInputChange("email", e.target.value)}
+            onChange={(e) => updateField("email", e.target.value)}
             required
           />
           {errors.email && (
@@ -112,7 +122,7 @@ export default function SignUpPage() {
           label="Password"
           placeholder="Create a password"
           value={formData.password}
-          onChange={(value) => handleInputChange("password", value)}
+          onChange={(value) => updateField("password", value)}
           error={errors.password}
           required
           autoComplete="new-password"
@@ -123,7 +133,7 @@ export default function SignUpPage() {
           label="Confirm Password"
           placeholder="Confirm your password"
           value={formData.confirmPassword}
-          onChange={(value) => handleInputChange("confirmPassword", value)}
+          onChange={(value) => updateField("confirmPassword", value)}
           error={errors.confirmPassword}
           required
           autoComplete="new-password"

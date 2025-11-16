@@ -10,6 +10,7 @@
     "clean:workspaces": "turbo --no-daemon clean",
     "web": "pnpm --filter @pesapeak/web run dev",
     "landing": "pnpm --filter @pesapeak/landing run dev",
+    "mobile": "pnpm --filter @pesapeak/mobile run dev",
     "format": "turbo --no-daemon format --continue",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "format:fix": "turbo --no-daemon format:fix --continue",
@@ -32,5 +33,10 @@
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "lightningcss": "1.30.1"
+    }
   }
 }

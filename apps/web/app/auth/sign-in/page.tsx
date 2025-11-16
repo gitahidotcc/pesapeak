@@ -1,56 +1,24 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthForm } from "../components/auth-form";
-import { SocialAuth } from "../components/social-auth";
-import { useSignInMutation } from "../hooks/use-auth-mutations";
-import { signInSchema } from "../validations/auth";
-import type { SignInFormData } from "../validations/auth";
+import { useSignInForm } from "../hooks/use-sign-in-form";
 
 export default function SignInPage() {
-  const [formData, setFormData] = useState<SignInFormData>({
-    email: "",
-    password: "",
-    rememberMe: false,
-  });
-  const [errors, setErrors] = useState<Partial<SignInFormData>>({});
-
-  const signInMutation = useSignInMutation();
-
-  const handleInputChange = (field: keyof SignInFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      // Validate with Zod
-      const validatedData = signInSchema.parse(formData);
-      setErrors({});
-      
-      // Submit mutation
-      await signInMutation.mutateAsync(validatedData);
-    } catch (error) {
-      if (error instanceof Error && 'issues' in error) {
-        // Zod validation errors
-        const zodErrors = error as any;
-        const fieldErrors: Partial<SignInFormData> = {};
-        zodErrors.issues.forEach((issue: any) => {
-          fieldErrors[issue.path[0] as keyof SignInFormData] = issue.message;
-        });
-        setErrors(fieldErrors);
-      }
-    }
-  };
+  const {
+    formData,
+    errors,
+    updateField,
+    handleSubmit,
+    isLoading,
+    error,
+    clearError,
+  } = useSignInForm();
 
   const footer = (
     <div className="space-y-4">
@@ -59,7 +27,7 @@ export default function SignInPage() {
           <Checkbox
             id="remember-me"
             checked={formData.rememberMe}
-            onCheckedChange={(checked) => handleInputChange("rememberMe", !!checked)}
+            onCheckedChange={(checked) => updateField("rememberMe", !!checked)}
           />
           <Label htmlFor="remember-me">Remember me</Label>
         </div>
@@ -79,8 +47,6 @@ export default function SignInPage() {
           </Link>
         </p>
       </div>
-
-      <SocialAuth onGoogleSignIn={() => console.log("Google sign in")} />
     </div>
   );
 
@@ -90,9 +56,24 @@ export default function SignInPage() {
       description="Sign in to your PesaPeak account"
       onSubmit={handleSubmit}
       submitText="Sign in"
-      isLoading={signInMutation.isPending}
+      isLoading={isLoading}
       footer={footer}
     >
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={clearError}
+              className="ml-2 text-sm underline hover:no-underline"
+              type="button"
+            >
+              Dismiss
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -101,7 +82,7 @@ export default function SignInPage() {
             type="email"
             placeholder="Enter your email"
             value={formData.email}
-            onChange={(e) => handleInputChange("email", e.target.value)}
+            onChange={(e) => updateField("email", e.target.value)}
             required
           />
           {errors.email && (
@@ -116,7 +97,7 @@ export default function SignInPage() {
             type="password"
             placeholder="Enter your password"
             value={formData.password}
-            onChange={(e) => handleInputChange("password", e.target.value)}
+            onChange={(e) => updateField("password", e.target.value)}
             required
           />
           {errors.password && (
