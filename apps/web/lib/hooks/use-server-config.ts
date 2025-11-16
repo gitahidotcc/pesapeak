@@ -8,7 +8,6 @@ import { clientConfig } from "@pesapeak/shared/config";
 export function useServerConfig() {
   return {
     smtpConfigured: clientConfig.email.smtpConfigured,
-    emailVerificationRequired: clientConfig.email.emailVerificationRequired,
     auth: clientConfig.auth,
   };
 }
@@ -21,6 +20,5 @@ export function useSmtpConfig() {
   
   return {
     isSmtpConfigured: config.smtpConfigured,
-    emailVerificationRequired: config.emailVerificationRequired,
   };
 }

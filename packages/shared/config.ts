@@ -278,7 +278,6 @@ export const clientConfig = {
   },
   email: {
     smtpConfigured: !!serverConfig.email.smtp,
-    emailVerificationRequired: serverConfig.auth.emailVerificationRequired,
   },
   inference: {
     isConfigured: serverConfig.inference.isConfigured,

@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useForgotPasswordForm } from "../hooks/use-forgot-password-form";
-import { useSmtpConfig } from "@/lib/hooks/use-server-config";
+import { useClientConfig } from "@/lib/client-config";
 
 export default function ForgotPasswordPage() {
-  const { isSmtpConfigured } = useSmtpConfig();
+  const clientConfig = useClientConfig();
+  const isSmtpConfigured = clientConfig.email.smtpConfigured;
   const {
     formData,
     errors,

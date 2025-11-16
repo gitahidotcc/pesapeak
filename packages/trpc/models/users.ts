@@ -88,42 +88,42 @@ export class User implements PrivacyAware {
     // Determine role: if not provided, check if this is the first user (admin) or subsequent (user)
     // Note: Router already checks if users exist, so if we reach here without a role,
     // this must be the first user (admin)
-    let userRole = input.role;
-    if (!userRole) {
+      let userRole = input.role;
+      if (!userRole) {
       const [{ count: userCount }] = await db
-        .select({ count: count() })
-        .from(users);
-      userRole = userCount === 0 ? "admin" : "user";
-    }
-
-    try {
-      const [result] = await db
-        .insert(users)
-        .values({
-          name: input.name,
-          email: input.email,
-          password: input.password,
-          salt: input.salt,
-          role: userRole,
-          emailVerified: input.emailVerified,
-        })
-        .returning();
-
-      return result;
-    } catch (e) {
-      if (e instanceof SqliteError) {
-        if (e.code === "SQLITE_CONSTRAINT_UNIQUE") {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Email is already taken",
-          });
-        }
+          .select({ count: count() })
+          .from(users);
+        userRole = userCount === 0 ? "admin" : "user";
       }
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Something went wrong",
-      });
-    }
+
+      try {
+      const [result] = await db
+          .insert(users)
+          .values({
+            name: input.name,
+            email: input.email,
+            password: input.password,
+            salt: input.salt,
+            role: userRole,
+            emailVerified: input.emailVerified,
+          })
+          .returning();
+
+        return result;
+      } catch (e) {
+        if (e instanceof SqliteError) {
+          if (e.code === "SQLITE_CONSTRAINT_UNIQUE") {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Email is already taken",
+            });
+          }
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong",
+        });
+      }
   }
 
   static async getAll(ctx: AuthedContext): Promise<User[]> {

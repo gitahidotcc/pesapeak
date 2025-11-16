@@ -12,7 +12,6 @@ export const ClientConfigCtx = createContext<ClientConfig>({
   },
   email: {
     smtpConfigured: false,
-    emailVerificationRequired: false,
   },
   inference: {
     isConfigured: false,

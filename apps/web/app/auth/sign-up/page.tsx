@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthForm } from "../components/auth-form";
 import { PasswordField } from "../components/password-field";
-import { SocialAuth } from "../components/social-auth";
 import { AccountExistsMessage } from "../components/account-exists-message";
 import { useSignUpForm } from "../hooks/use-sign-up-form";
 import { useServerConfig } from "@/lib/hooks/use-server-config";
@@ -53,8 +52,6 @@ export default function SignUpPage() {
           </Link>
         </p>
       </div>
-
-      <SocialAuth onGoogleSignIn={() => console.log("Google sign up")} />
     </div>
   );
 

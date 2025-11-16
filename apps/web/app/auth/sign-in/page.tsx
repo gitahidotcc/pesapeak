@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthForm } from "../components/auth-form";
-import { SocialAuth } from "../components/social-auth";
 import { useSignInForm } from "../hooks/use-sign-in-form";
 
 export default function SignInPage() {
@@ -48,8 +47,6 @@ export default function SignInPage() {
           </Link>
         </p>
       </div>
-
-      <SocialAuth onGoogleSignIn={() => console.log("Google sign in")} />
     </div>
   );
 
