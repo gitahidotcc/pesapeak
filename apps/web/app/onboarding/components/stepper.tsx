@@ -7,34 +7,40 @@ type StepperProps = {
   currentStep: number;
 };
 
-export function Stepper({ steps, currentStep }: StepperProps) {
-  return (
-    <div className="rounded-2xl border border-border bg-card/80 p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-4 overflow-x-auto py-2">
-        {steps.map((step, index) => {
-          const isActive = index === currentStep;
-          const isCompleted = index < currentStep;
+import { cn } from "@/lib/utils";
 
-          return (
-            <div key={step.id} className="flex flex-1 min-w-[150px] flex-col gap-1">
-              <div
-                className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition ${
-                  isActive
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : isCompleted
-                    ? "border-border bg-card text-muted-foreground"
-                    : "border-border bg-transparent text-muted-foreground"
-                }`}
-              >
-                {index + 1}
-              </div>
-              <p className="text-xs font-semibold uppercase text-muted-foreground">{step.title}</p>
-              <p className="text-xs text-muted-foreground/70">{step.description}</p>
-            </div>
-          );
-        })}
+export function Stepper({ steps, currentStep }: StepperProps) {
+  const progress = ((currentStep + 1) / steps.length) * 100;
+  const currentStepData = steps[currentStep];
+
+  return (
+    <div className="w-full space-y-4">
+      <div className="flex items-end justify-between">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-muted-foreground">
+            Step {currentStep + 1} of {steps.length}
+          </p>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            {currentStepData?.title}
+          </h2>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-muted-foreground">
+            {Math.round(progress)}% completed
+          </p>
+        </div>
+      </div>
+
+      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+        <div
+          className="h-full bg-primary transition-all duration-500 ease-in-out"
+          style={{ width: `${progress}%` }}
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
       </div>
     </div>
   );
 }
-
