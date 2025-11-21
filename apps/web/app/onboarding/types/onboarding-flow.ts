@@ -1,3 +1,5 @@
+import type { AccountType } from "@pesapeak/shared/types/accounts";
+
 export type OnboardingStepDefinition = {
   id: string;
   title: string;
@@ -7,9 +9,16 @@ export type OnboardingStepDefinition = {
 export type OnboardingAccount = {
   id: string;
   name: string;
-  type: string;
-  balance: string;
-  detail: string;
+  accountType: AccountType;
+  currency: string;
+  color: string;
+  icon: string;
+  notes: string;
+  initialBalance: number;
+  totalBalance: number;
+  defaultAccount: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type OnboardingImport = {
@@ -35,8 +44,17 @@ export type OnboardingReviewItem = {
   date: string;
 };
 
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  savings: "Savings Account",
+  "credit-card": "Credit Card",
+  current: "Current Account",
+  "mobile-money": "Mobile Money",
+  cash: "Cash",
+};
+
 export type OnboardingContext = {
-  heroAccounts: OnboardingAccount[];
+  accounts: OnboardingAccount[];
+  accountsLoading: boolean;
   importHistory: OnboardingImport[];
   categories: OnboardingCategory[];
   reviewItems: OnboardingReviewItem[];

@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/trpc";
 import type {
-  OnboardingAccount,
   OnboardingCategory,
   OnboardingContext,
   OnboardingImport,
@@ -57,32 +56,8 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
 export function useOnboardingFlow(initialStep: number = 0) {
   const [currentStep, setCurrentStep] = useState(initialStep);
 
-  const context = useMemo<OnboardingContext>(() => {
-    const heroAccounts: OnboardingAccount[] = [
-      {
-        id: "main-checking",
-        name: "Main Checking",
-        type: "Checking account",
-        balance: "$4,200.00",
-        detail: "Linked via Plaid · USD",
-      },
-      {
-        id: "savings",
-        name: "Rainy Day Savings",
-        type: "Savings account",
-        balance: "$16,360.45",
-        detail: "Linked via manual entry",
-      },
-      {
-        id: "apie",
-        name: "API Payroll",
-        type: "Payoneer account",
-        balance: "$8,110.20",
-        detail: "Auto-import from payroll CSV",
-      },
-    ];
-
-    const importHistory: OnboardingImport[] = [
+  const importHistory = useMemo<OnboardingImport[]>(() => {
+    return [
       {
         id: "import-01",
         account: "Main Checking",
@@ -98,8 +73,10 @@ export function useOnboardingFlow(initialStep: number = 0) {
         status: "Payroll history synced",
       },
     ];
+  }, []);
 
-    const categories: OnboardingCategory[] = [
+  const categories = useMemo<OnboardingCategory[]>(() => {
+    return [
       {
         id: "groceries",
         name: "Groceries",
@@ -119,8 +96,10 @@ export function useOnboardingFlow(initialStep: number = 0) {
         confidence: "78% sure",
       },
     ];
+  }, []);
 
-    const reviewItems: OnboardingReviewItem[] = [
+  const reviewItems = useMemo<OnboardingReviewItem[]>(() => {
+    return [
       {
         id: "review-01",
         merchant: "Safaricom PLC",
@@ -143,14 +122,19 @@ export function useOnboardingFlow(initialStep: number = 0) {
         date: "Nov 19",
       },
     ];
+  }, []);
 
+  const accountsQuery = api.accounts.list.useQuery();
+
+  const context = useMemo<OnboardingContext>(() => {
     return {
-      heroAccounts,
+      accounts: accountsQuery.data ?? [],
+      accountsLoading: accountsQuery.isLoading,
       importHistory,
       categories,
       reviewItems,
     };
-  }, []);
+  }, [accountsQuery.data, accountsQuery.isLoading, importHistory, categories, reviewItems]);
 
   const updateStepMutation = api.onboarding.updateStep.useMutation();
 

@@ -73,23 +73,6 @@ export const passwordResetTokens = sqliteTable(
   (prt) => [index("passwordResetTokens_userId_idx").on(prt.userId)],
 );
 
-export const apiKeys = sqliteTable(
-  "apiKey",
-  {
-    id: text("id")
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => createId()),
-    name: text("name").notNull(),
-    createdAt: createdAtField(),
-    keyId: text("keyId").notNull().unique(),
-    keyHash: text("keyHash").notNull(),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-  },
-  (ak) => [unique().on(ak.name, ak.userId)],
-);
 
 // Better Auth tables
 export const sessions = sqliteTable("session", {
@@ -129,6 +112,48 @@ export const accounts = sqliteTable("account", {
   updatedAt: updatedAtField(),
 });
 
+
+// API Keys
+export const apiKeys = sqliteTable(
+  "apiKey",
+  {
+    id: text("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name").notNull(),
+    createdAt: createdAtField(),
+    keyId: text("keyId").notNull().unique(),
+    keyHash: text("keyHash").notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (ak) => [unique().on(ak.name, ak.userId)],
+);
+
+// Financial Accounts
+export const financialAccounts = sqliteTable("financialAccount", {
+  id: text("id")
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  accountType: text("accountType").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  color: text("color").notNull().default("#222222"),
+  icon: text("icon").notNull().default("bank"),
+  notes: text("notes").default(""),
+  initialBalance: integer("initialBalance").default(0),
+  totalBalance: integer("totalBalance").default(0),
+  defaultAccount: integer("defaultAccount", { mode: "boolean" }).default(false),
+  createdAt: createdAtField(),
+  updatedAt: updatedAtField(),
+});
+
 export const verifications = sqliteTable("verification", {
   id: text("id")
     .notNull()
@@ -158,6 +183,13 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 export const accountsRelations = relations(accounts, ({ one }) => ({
   user: one(users, {
     fields: [accounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const financialAccountsRelations = relations(financialAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [financialAccounts.userId],
     references: [users.id],
   }),
 }));
