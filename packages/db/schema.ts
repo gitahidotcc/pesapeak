@@ -16,12 +16,6 @@ function createdAtField() {
     .$defaultFn(() => new Date());
 }
 
-function modifiedAtField() {
-  return integer("modifiedAt", { mode: "timestamp" })
-    .$defaultFn(() => new Date())
-    .$onUpdate(() => new Date());
-}
-
 function updatedAtField() {
   return integer("updatedAt", { mode: "timestamp" })
     .$defaultFn(() => new Date())
@@ -48,6 +42,8 @@ export const users = sqliteTable("user", {
 
   // User Settings
   timezone: text("timezone").default("UTC"),
+  isOnboarded: integer("isOnboarded", { mode: "boolean" }).default(false),
+  onboardingStep: integer("onboardingStep").default(0),
 });
 
 export const verificationTokens = sqliteTable(

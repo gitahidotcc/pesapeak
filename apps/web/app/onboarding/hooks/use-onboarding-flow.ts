@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-
-export type OnboardingStepDefinition = {
-  id: string;
-  title: string;
-  description: string;
-};
+import { api } from "@/lib/trpc";
+import type {
+  OnboardingAccount,
+  OnboardingCategory,
+  OnboardingContext,
+  OnboardingImport,
+  OnboardingReviewItem,
+  OnboardingStepDefinition,
+} from "@/app/onboarding/types/onboarding-flow";
 
 export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
   {
@@ -51,46 +54,8 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
   },
 ];
 
-export type OnboardingAccount = {
-  id: string;
-  name: string;
-  type: string;
-  balance: string;
-  detail: string;
-};
-
-export type OnboardingImport = {
-  id: string;
-  account: string;
-  fileName: string;
-  importedAt: string;
-  status: string;
-};
-
-export type OnboardingCategory = {
-  id: string;
-  name: string;
-  description: string;
-  confidence: string;
-};
-
-export type OnboardingReviewItem = {
-  id: string;
-  merchant: string;
-  amount: string;
-  guessedCategory: string;
-  date: string;
-};
-
-export type OnboardingContext = {
-  heroAccounts: OnboardingAccount[];
-  importHistory: OnboardingImport[];
-  categories: OnboardingCategory[];
-  reviewItems: OnboardingReviewItem[];
-};
-
-export function useOnboardingFlow() {
-  const [currentStep, setCurrentStep] = useState(0);
+export function useOnboardingFlow(initialStep: number = 0) {
+  const [currentStep, setCurrentStep] = useState(initialStep);
 
   const context = useMemo<OnboardingContext>(() => {
     const heroAccounts: OnboardingAccount[] = [
@@ -187,12 +152,15 @@ export function useOnboardingFlow() {
     };
   }, []);
 
+  const updateStepMutation = api.onboarding.updateStep.useMutation();
+
   const goToStep = useCallback(
     (stepIndex: number) => {
       const limitedIndex = Math.max(0, Math.min(stepIndex, ONBOARDING_STEPS.length - 1));
       setCurrentStep(limitedIndex);
+      updateStepMutation.mutate({ step: limitedIndex });
     },
-    [setCurrentStep],
+    [setCurrentStep, updateStepMutation],
   );
 
   const goToNextStep = useCallback(() => {

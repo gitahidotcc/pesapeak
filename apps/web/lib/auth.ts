@@ -13,7 +13,7 @@ export const auth = betterAuth({
       if (!serverConfig.email.smtp) {
         throw new Error("SMTP is not configured");
       }
-      
+
       // Use our existing email sending function with Better Auth's URL
       await sendPasswordResetEmail(user.email, user.name || "User", token, url);
     },
@@ -52,6 +52,11 @@ export const auth = betterAuth({
       isOnboarded: {
         type: "boolean",
         defaultValue: false,
+        required: false,
+      },
+      onboardingStep: {
+        type: "number",
+        defaultValue: 0,
         required: false,
       },
     },

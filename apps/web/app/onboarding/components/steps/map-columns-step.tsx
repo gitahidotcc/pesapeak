@@ -1,6 +1,6 @@
 "use client";
 
-import { StepComponentProps } from "@/app/onboarding/components/steps/types";
+import { StepComponentProps } from "@/app/onboarding/types/step-component";
 
 const mappingSamples = [
   { csv: "Date", field: "Transaction Date" },

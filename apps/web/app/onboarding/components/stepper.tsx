@@ -1,6 +1,6 @@
 "use client";
 
-import type { OnboardingStepDefinition } from "@/app/onboarding/hooks/use-onboarding-flow";
+import type { OnboardingStepDefinition } from "@/app/onboarding/types/onboarding-flow";
 
 type StepperProps = {
   steps: OnboardingStepDefinition[];
