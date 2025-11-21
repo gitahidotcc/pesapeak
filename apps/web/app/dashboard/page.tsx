@@ -26,12 +26,6 @@ export default async function DashboardPage() {
     redirect("/auth/sign-in");
   }
 
-  const hasCompletedOnboarding = (session.user as { hasCompletedOnboarding?: boolean }).hasCompletedOnboarding;
-
-  if (hasCompletedOnboarding === false) {
-    redirect("/onboarding");
-  }
-
   return (
     <div className="space-y-6">
       <header className="rounded-2xl border border-border bg-card p-6 shadow-sm">
