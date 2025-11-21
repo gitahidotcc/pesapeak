@@ -8,6 +8,12 @@ export default async function DashboardPage() {
     redirect("/auth/sign-in");
   }
 
+  const hasCompletedOnboarding = (session.user as { hasCompletedOnboarding?: boolean }).hasCompletedOnboarding;
+
+  if (hasCompletedOnboarding === false) {
+    redirect("/onboarding");
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
