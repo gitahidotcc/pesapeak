@@ -10,6 +10,12 @@ export default async function DashboardPage() {
     redirect("/auth/sign-in");
   }
 
+  const hasCompletedOnboarding = (session.user as { hasCompletedOnboarding?: boolean }).hasCompletedOnboarding;
+
+  if (hasCompletedOnboarding === false) {
+    redirect("/onboarding");
+  }
+
   return (
     <>
       <DashboardClient />
