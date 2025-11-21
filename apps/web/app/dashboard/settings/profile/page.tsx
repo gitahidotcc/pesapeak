@@ -1,19 +1,12 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "@/lib/auth-actions";
 import { BackButton } from "@/components/ui/back-button";
 import { ProfileForm } from "./components/profile-form";
 
 const heroText = {
     headline: "Profile",
-    subhead: "Update the personal details that power your Pesapeak experience.",
+    subhead: "Update the personal details.",
 };
 
 export default async function ProfilePage() {
-    const session = await getServerSession();
-
-    if (!session?.user) {
-        redirect("/auth/sign-in");
-    }
 
     return (
         <div className="space-y-8">

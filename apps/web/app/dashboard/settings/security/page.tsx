@@ -1,27 +1,16 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "@/lib/auth-actions";
 import { ChangePasswordForm } from "./components/change-password-form";
 import { ActiveSessions } from "./components/active-sessions";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { BackButton } from "@/components/ui/back-button";
 
 export default async function SecurityPage() {
-    const session = await getServerSession();
-
-    if (!session) {
-        redirect("/auth/sign-in");
-    }
-
     return (
         <div className="space-y-6">
-            <header className="space-y-2">
-                <Link
+            <header className="space-y-2 relative pl-12">
+                <BackButton
                     href="/dashboard/settings"
-                    className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                    <ChevronLeft className="h-4 w-4" />
-                    Back to Settings
-                </Link>
+                    className="absolute left-0 top-0"
+                    aria-label="Back to settings"
+                />
                 <div>
                     <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
                         Settings

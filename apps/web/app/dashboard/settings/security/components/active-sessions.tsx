@@ -109,6 +109,8 @@ export function ActiveSessions() {
     }, []);
 
     const handleRevokeSession = async (sessionId: string) => {
+        const isCurrentSession = sessionId === currentSessionToken;
+
         setRevokingSessionId(sessionId);
 
         try {
@@ -116,6 +118,23 @@ export function ActiveSessions() {
 
             if (result.error) {
                 toast.error("Failed to revoke session");
+                return;
+            }
+
+            // If revoking current session, clear cookies and redirect
+            if (isCurrentSession) {
+                // Clear all better-auth cookies
+                document.cookie.split(";").forEach((cookie) => {
+                    const [name] = cookie.split("=");
+                    if (name.trim().startsWith("better-auth")) {
+                        document.cookie = `${name.trim()}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                    }
+                });
+
+                toast.success("Session revoked. Redirecting to sign in...");
+
+                // Redirect to sign-in page
+                window.location.href = "/auth/sign-in";
                 return;
             }
 
@@ -175,7 +194,7 @@ export function ActiveSessions() {
 
     return (
         <div className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
                         <Shield className="h-5 w-5 text-primary" />
@@ -213,20 +232,20 @@ export function ActiveSessions() {
                         const lastActive = session.updatedAt || session.createdAt;
 
                         return (
-                            <div
-                                key={session.id}
-                                className={`flex items-center justify-between rounded-xl border p-4 transition-colors ${isCurrentSession
-                                    ? "border-primary/50 bg-primary/5"
-                                    : "border-border bg-muted/30 hover:bg-muted/50"
-                                    }`}
-                            >
-                                <div className="flex items-center gap-4">
+                        <div
+                            key={session.id}
+                            className={`flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${isCurrentSession
+                                ? "border-primary/50 bg-primary/5"
+                                : "border-border bg-muted/30 hover:bg-muted/50"
+                                }`}
+                        >
+                            <div className="flex flex-1 min-w-0 items-center gap-4">
                                     <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${isCurrentSession ? "bg-primary/20" : "bg-muted"
                                         }`}>
                                         <DeviceIcon className={`h-6 w-6 ${isCurrentSession ? "text-primary" : "text-muted-foreground"
                                             }`} />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <div className="flex items-center gap-2">
                                             <p className="font-medium text-foreground">
                                                 {browser} on {os}
