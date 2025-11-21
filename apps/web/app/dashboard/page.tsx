@@ -1,5 +1,23 @@
 import { redirect } from "next/navigation";
-import { getServerSession, signOutFormAction } from "@/lib/auth-actions";
+import { getServerSession } from "@/lib/auth-actions";
+
+const quickMetrics = [
+  { label: "Available balance", value: "$12,460", delta: "+3.1%" },
+  { label: "Monthly savings", value: "$2,740", delta: "Goal 92%" },
+  { label: "Upcoming bills", value: "$1,320", delta: "Due in 6 days" },
+];
+
+const activityRows = [
+  { label: "Salary deposit", amount: "+$4,200", meta: "Cleared Nov 20" },
+  { label: "Rent payment", amount: "-$1,200", meta: "Scheduled Nov 25" },
+  { label: "Groceries", amount: "-$180", meta: "Pending merchant review" },
+];
+
+const focusActions = [
+  "Track inflows vs. expenses",
+  "Ensure savings targets stay on track",
+  "Review upcoming pay cycles",
+];
 
 export default async function DashboardPage() {
   const session = await getServerSession();
@@ -15,62 +33,73 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="py-6">
-          <div className="md:flex md:items-center md:justify-between">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                Welcome back, {session.user.name}!
-              </h2>
-            </div>
-            <div className="mt-4 flex md:mt-0 md:ml-4">
-              <form action={signOutFormAction}>
-                <button
-                  type="submit"
-                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  Sign out
-                </button>
-              </form>
-            </div>
+    <div className="space-y-6">
+      <header className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Overview</p>
+            <h1 className="text-2xl font-semibold text-foreground">Stay ahead of the month</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your accounts are healthy and ready for the next cycle.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="rounded-2xl border border-border bg-background px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:border-primary/50 hover:text-foreground">
+              Quick action
+            </button>
+            <button className="rounded-2xl border border-primary bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-primary transition hover:border-primary/80 hover:bg-primary/20">
+              Explore
+            </button>
           </div>
         </div>
+      </header>
 
-        <div className="mt-8">
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Dashboard
-              </h3>
-              <div className="mt-2 max-w-xl text-sm text-gray-500">
-                <p>This is a protected dashboard page. You are successfully authenticated!</p>
-              </div>
-              <div className="mt-4">
-                <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Email</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{session.user.email}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">User ID</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{session.user.id}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Session ID</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{session.session.id}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Created At</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(session.session.createdAt).toLocaleString()}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {quickMetrics.map((metric) => (
+          <article key={metric.label} className="rounded-2xl border border-border bg-card p-5">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{metric.value}</p>
+            <p className="text-sm font-medium text-muted-foreground">{metric.delta}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Focus</p>
+          <h2 className="mt-2 text-lg font-semibold text-foreground">Stay ahead of the month</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your accounts are healthy and ready for the next cycle.
+          </p>
+          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+            {focusActions.map((action) => (
+              <li key={action} className="flex items-start gap-2">
+                <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                <span>{action}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Snapshot</p>
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </span>
           </div>
-        </div>
+          <div className="mt-4 space-y-3">
+            {activityRows.map((item) => (
+              <div key={item.label} className="flex items-center justify-between rounded-2xl border border-border bg-muted/30 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.meta}</p>
+                </div>
+                <p className="text-sm font-semibold text-foreground">{item.amount}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
