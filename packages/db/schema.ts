@@ -42,6 +42,7 @@ export const users = sqliteTable("user", {
 
   // User Settings
   timezone: text("timezone").default("UTC"),
+  language: text("language").default("en"),
   isOnboarded: integer("isOnboarded", { mode: "boolean" }).default(false),
   onboardingStep: integer("onboardingStep").default(0),
 });
