@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -6,6 +6,7 @@ import {
   sqliteTable,
   text,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import { createId } from "@paralleldrive/cuid2";
 
@@ -134,26 +135,35 @@ export const apiKeys = sqliteTable(
 );
 
 // Financial Accounts
-export const financialAccounts = sqliteTable("financialAccount", {
-  id: text("id")
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  userId: text("userId")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  accountType: text("accountType").notNull(),
-  currency: text("currency").notNull().default("USD"),
-  color: text("color").notNull().default("#222222"),
-  icon: text("icon").notNull().default("bank"),
-  notes: text("notes").default(""),
-  initialBalance: integer("initialBalance").default(0),
-  totalBalance: integer("totalBalance").default(0),
-  defaultAccount: integer("defaultAccount", { mode: "boolean" }).default(false),
-  createdAt: createdAtField(),
-  updatedAt: updatedAtField(),
-});
+export const financialAccounts = sqliteTable(
+  "financialAccount",
+  {
+    id: text("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    accountType: text("accountType").notNull(),
+    currency: text("currency").notNull().default("USD"),
+    color: text("color").notNull().default("#222222"),
+    icon: text("icon").notNull().default("bank"),
+    notes: text("notes").default(""),
+    initialBalance: integer("initialBalance").default(0),
+    totalBalance: integer("totalBalance").default(0),
+    defaultAccount: integer("defaultAccount", { mode: "boolean" }).default(false),
+    createdAt: createdAtField(),
+    updatedAt: updatedAtField(),
+  },
+  (table) => ({
+    // Unique constraint: only one default account per user
+    uniqueDefaultPerUser: uniqueIndex("unique_default_per_user")
+      .on(table.userId, table.defaultAccount)
+      .where(sql`${table.defaultAccount} = 1`),
+  })
+);
 
 export const verifications = sqliteTable("verification", {
   id: text("id")
