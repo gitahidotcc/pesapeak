@@ -98,6 +98,7 @@ export const transactionsRouter = router({
     .query(async ({ ctx, input }) => {
       const conditions = [eq(transactions.userId, ctx.user.id)];
 
+
       if (input?.accountId) {
         conditions.push(eq(transactions.accountId, input.accountId));
       }
@@ -108,15 +109,18 @@ export const transactionsRouter = router({
         conditions.push(eq(transactions.type, input.type));
       }
       if (input?.startDate) {
-        const startDate = new Date(input.startDate);
-        startDate.setHours(0, 0, 0, 0);
-        // Use sql for timestamp comparison since date is stored as integer timestamp
-        conditions.push(sql`${transactions.date} >= ${startDate.getTime()}`);
+        // Parse date string as UTC to avoid timezone issues
+        const [year, month, day] = input.startDate.split("-").map(Number);
+        const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        // Use gte with Date object - transactions.date is a Date object (mode: "timestamp")
+        conditions.push(gte(transactions.date, startDate));
       }
       if (input?.endDate) {
-        const endDate = new Date(input.endDate);
-        endDate.setHours(23, 59, 59, 999);
-        conditions.push(sql`${transactions.date} <= ${endDate.getTime()}`);
+        // Parse date string as UTC to avoid timezone issues
+        const [year, month, day] = input.endDate.split("-").map(Number);
+        const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+        // Use lte with Date object - transactions.date is a Date object (mode: "timestamp")
+        conditions.push(lte(transactions.date, endDate));
       }
 
       const results = await ctx.db.query.transactions.findMany({
@@ -125,6 +129,7 @@ export const transactionsRouter = router({
         limit: input?.limit ?? 50,
         offset: input?.offset ?? 0,
       });
+
 
       return results.map((transaction) => ({
         id: transaction.id,
@@ -170,11 +175,14 @@ export const transactionsRouter = router({
       const amountInCents = Math.round(input.amount * 100);
 
       // Parse date and time - combine date string (YYYY-MM-DD) with optional time (HH:mm)
+      // Use UTC to ensure consistent storage regardless of server timezone
       const [year, month, day] = input.date.split("-").map(Number);
-      const dateObj = new Date(year, month - 1, day);
+      let dateObj: Date;
       if (input.time) {
         const [hours, minutes] = input.time.split(":").map(Number);
-        dateObj.setHours(hours, minutes, 0, 0);
+        dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+      } else {
+        dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
       }
 
       const transactionId = createId();
@@ -311,11 +319,14 @@ export const transactionsRouter = router({
         updateValues.amount = Math.round(updateData.amount * 100);
       }
       if (updateData.date !== undefined) {
+        // Use UTC to ensure consistent storage regardless of server timezone
         const [year, month, day] = updateData.date.split("-").map(Number);
-        const dateObj = new Date(year, month - 1, day);
+        let dateObj: Date;
         if (updateData.time) {
           const [hours, minutes] = updateData.time.split(":").map(Number);
-          dateObj.setHours(hours, minutes, 0, 0);
+          dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+        } else {
+          dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
         }
         updateValues.date = dateObj;
       }
