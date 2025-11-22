@@ -2,8 +2,18 @@
 
 import { useState } from "react";
 import { api } from "@/lib/trpc";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { CurrencyDialogPicker } from "./currency-dialog-picker";
 import { IconDialogPicker } from "./icon-dialog-picker";
 import { ColorDialogPicker } from "./color-dialog-picker";
@@ -73,39 +83,31 @@ export function CreateAccountForm() {
         });
     };
 
-    if (!isOpen) {
-        return (
-            <button
-                onClick={() => setIsOpen(true)}
-                className="inline-flex items-center gap-2 rounded-2xl border border-dashed border-border bg-card px-6 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary hover:bg-primary/5"
-            >
-                <Plus className="h-5 w-5" />
-                Create New Account
-            </button>
-        );
-    }
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (!open) {
+            resetForm();
+        }
+    };
 
     return (
-        <div className="space-y-6 rounded-3xl border border-border bg-card p-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                        Create New Account
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                        Add a new financial account to track
-                    </p>
-                </div>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+            <DialogTrigger asChild>
                 <button
-                    onClick={() => {
-                        setIsOpen(false);
-                        resetForm();
-                    }}
-                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-2xl border border-dashed border-border bg-card px-6 py-4 text-sm font-semibold text-foreground transition-all hover:border-primary hover:bg-primary/5"
                 >
-                    <X className="h-5 w-5" />
+                    <Plus className="h-5 w-5" />
+                    Create New Account
                 </button>
-            </div>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Create New Account</DialogTitle>
+                    <DialogDescription>
+                        Add a new financial account to track
+                    </DialogDescription>
+                </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
@@ -232,26 +234,23 @@ export function CreateAccountForm() {
                     </div>
                 )}
 
-                <div className="flex gap-3">
-                    <button
+                <DialogFooter>
+                    <Button
                         type="button"
-                        onClick={() => {
-                            setIsOpen(false);
-                            resetForm();
-                        }}
-                        className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                        variant="outline"
+                        onClick={() => handleOpenChange(false)}
                     >
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="submit"
                         disabled={createAccount.isPending}
-                        className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
                         {createAccount.isPending ? "Creating..." : "Create Account"}
-                    </button>
-                </div>
+                    </Button>
+                </DialogFooter>
             </form>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -2,20 +2,7 @@
 
 import { ACCOUNT_TYPE_LABELS } from "@/app/onboarding/types/onboarding-flow";
 import { StepComponentProps } from "@/app/onboarding/types/step-component";
-
-const formatBalance = (value: number | undefined, currency?: string) => {
-  const amount = typeof value === "number" ? value : 0;
-
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency ?? "USD",
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${amount.toLocaleString()} ${currency ?? ""}`.trim();
-  }
-};
+import { formatBalance } from "@/app/onboarding/lib/format";
 
 export function ImportCsvStep({ context }: StepComponentProps) {
   const { accounts, accountsLoading } = context;
