@@ -280,3 +280,69 @@ export const categoriesRelations = relations(categories, ({ one }) => ({
   }),
 }));
 
+// Transactions
+export const transactions = sqliteTable(
+  "transaction",
+  {
+    id: text("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type", { enum: ["income", "expense", "transfer"] }).notNull(),
+    amount: integer("amount").notNull(), // Stored in cents
+    // For income/expense transactions
+    accountId: text("accountId").references(() => financialAccounts.id, { onDelete: "cascade" }),
+    categoryId: text("categoryId").references(() => categories.id, { onDelete: "set null" }),
+    // For transfer transactions
+    fromAccountId: text("fromAccountId").references(() => financialAccounts.id, { onDelete: "cascade" }),
+    toAccountId: text("toAccountId").references(() => financialAccounts.id, { onDelete: "cascade" }),
+    // Date and time
+    date: integer("date", { mode: "timestamp" }).notNull(),
+    time: text("time"), // HH:mm format or null
+    // Additional fields
+    notes: text("notes").default(""),
+    attachmentPath: text("attachmentPath"), // Path to uploaded file
+    attachmentFileName: text("attachmentFileName"), // Original filename
+    attachmentMimeType: text("attachmentMimeType"), // MIME type
+    createdAt: createdAtField(),
+    updatedAt: updatedAtField(),
+  },
+  (table) => ({
+    userIdIdx: index("transactions_userId_idx").on(table.userId),
+    accountIdIdx: index("transactions_accountId_idx").on(table.accountId),
+    fromAccountIdIdx: index("transactions_fromAccountId_idx").on(table.fromAccountId),
+    toAccountIdIdx: index("transactions_toAccountId_idx").on(table.toAccountId),
+    categoryIdIdx: index("transactions_categoryId_idx").on(table.categoryId),
+    dateIdx: index("transactions_date_idx").on(table.date),
+  })
+);
+
+// Relations for transactions
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  user: one(users, {
+    fields: [transactions.userId],
+    references: [users.id],
+  }),
+  account: one(financialAccounts, {
+    fields: [transactions.accountId],
+    references: [financialAccounts.id],
+  }),
+  fromAccount: one(financialAccounts, {
+    fields: [transactions.fromAccountId],
+    references: [financialAccounts.id],
+    relationName: "fromAccount",
+  }),
+  toAccount: one(financialAccounts, {
+    fields: [transactions.toAccountId],
+    references: [financialAccounts.id],
+    relationName: "toAccount",
+  }),
+  category: one(categories, {
+    fields: [transactions.categoryId],
+    references: [categories.id],
+  }),
+}));
+

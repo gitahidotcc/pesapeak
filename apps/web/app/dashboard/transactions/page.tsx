@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/auth-actions";
+import { FloatingActionButtonWrapper } from "./components/floating-action-button-wrapper";
 
 const dummyTransactions = [
     {
@@ -75,7 +76,8 @@ export default async function TransactionsPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <>
+            <div className="space-y-6">
             <header>
                 <h1 className="text-3xl font-bold text-foreground">Transactions</h1>
                 <p className="mt-2 text-muted-foreground">
@@ -171,6 +173,8 @@ export default async function TransactionsPage() {
                     </table>
                 </div>
             </div>
-        </div>
+            </div>
+            <FloatingActionButtonWrapper />
+        </>
     );
 }

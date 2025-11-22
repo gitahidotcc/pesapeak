@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/auth-actions";
+import { FloatingActionButtonWrapper } from "./transactions/components/floating-action-button-wrapper";
 
 const quickMetrics = [
   { label: "Available balance", value: "$12,460", delta: "+3.1%" },
@@ -27,7 +28,8 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <header className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -95,6 +97,8 @@ export default async function DashboardPage() {
           </div>
         </section>
       </div>
-    </div>
+      </div>
+      <FloatingActionButtonWrapper />
+    </>
   );
 }
