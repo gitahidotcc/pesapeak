@@ -11,6 +11,40 @@ export function ProfileForm() {
         useProfileForm();
     const disabled = saving || isLoading;
 
+    if (isLoading) {
+        return (
+            <div className="space-y-6 rounded-3xl border border-border bg-card p-6">
+                <div className="space-y-2">
+                    <div className="h-5 w-32 animate-pulse rounded bg-muted-foreground/30" />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                        <div className="h-3 w-20 animate-pulse rounded bg-muted-foreground/30" />
+                        <div className="h-10 w-full animate-pulse rounded-md bg-muted-foreground/30" />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="h-3 w-24 animate-pulse rounded bg-muted-foreground/30" />
+                        <div className="h-10 w-full animate-pulse rounded-md bg-muted-foreground/30" />
+                    </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                        <div className="h-3 w-20 animate-pulse rounded bg-muted-foreground/30" />
+                        <div className="h-10 w-full animate-pulse rounded-md bg-muted-foreground/30" />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="h-3 w-20 animate-pulse rounded bg-muted-foreground/30" />
+                        <div className="h-10 w-full animate-pulse rounded-md bg-muted-foreground/30" />
+                    </div>
+                </div>
+
+                <div className="h-10 w-full animate-pulse rounded-md bg-muted-foreground/30" />
+            </div>
+        );
+    }
+
     return (
         <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-border bg-card p-6">
             <div className="space-y-2">
