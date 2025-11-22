@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CurrencyDialogPicker } from "./currency-dialog-picker";
-import { IconDialogPicker } from "./icon-dialog-picker";
-import { ColorDialogPicker } from "./color-dialog-picker";
+import { IconDialogPicker } from "@/components/shared/icon-picker/icon-dialog-picker";
+import { ColorDialogPicker } from "@/components/shared/color-picker/color-dialog-picker";
 
 const ACCOUNT_TYPES = [
     { value: "savings", label: "Savings" },

@@ -221,7 +221,7 @@ export function parseCsv(csvText: string): {
     errors.push(`Failed to parse CSV: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  return { format, transactions, errors };
+  return { format: "unknown" as CsvFormat, transactions, errors };
 }
 
 /**

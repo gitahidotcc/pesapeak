@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import type React from "react";
 import { api } from "@/lib/trpc";
 import {
     Banknote,
@@ -11,7 +12,9 @@ import {
     type LucideIcon,
     Pencil,
     Trash2,
+    Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { EditAccountDialog } from "./edit-account-dialog";
 import { DeleteAccountDialog } from "./delete-account-dialog";
 
@@ -43,10 +46,60 @@ const formatCurrency = (amount: number, currency: string) => {
     }
 };
 
+// Highlight matching text in search results (handles multiple matches)
+const highlightText = (text: string, query: string): React.ReactNode => {
+    if (!query.trim()) return text;
+
+    const queryLower = query.toLowerCase();
+    const textLower = text.toLowerCase();
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let index = textLower.indexOf(queryLower, lastIndex);
+
+    while (index !== -1) {
+        // Add text before the match
+        if (index > lastIndex) {
+            parts.push(text.slice(lastIndex, index));
+        }
+        // Add the highlighted match
+        parts.push(
+            <mark
+                key={index}
+                className="bg-primary/20 text-primary-foreground rounded px-0.5"
+            >
+                {text.slice(index, index + query.length)}
+            </mark>
+        );
+        lastIndex = index + query.length;
+        index = textLower.indexOf(queryLower, lastIndex);
+    }
+
+    // Add remaining text after the last match
+    if (lastIndex < text.length) {
+        parts.push(text.slice(lastIndex));
+    }
+
+    return parts.length > 0 ? <>{parts}</> : text;
+};
+
 export function AccountList() {
     const { data: accounts, isLoading } = api.accounts.list.useQuery();
     const [editingAccount, setEditingAccount] = useState<any>(null);
     const [deletingAccount, setDeletingAccount] = useState<{ id: string; name: string } | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    // Filter accounts based on search query (name and type)
+    const filteredAccounts = useMemo(() => {
+        if (!accounts) return [];
+        if (!searchQuery.trim()) return accounts;
+
+        const query = searchQuery.toLowerCase().trim();
+        return accounts.filter((account) => {
+            const accountName = account.name.toLowerCase();
+            const typeLabel = (ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType).toLowerCase();
+            return accountName.includes(query) || typeLabel.includes(query);
+        });
+    }, [accounts, searchQuery]);
 
     if (isLoading) {
         return (
@@ -81,8 +134,34 @@ export function AccountList() {
 
     return (
         <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {accounts.map((account) => {
+            <div className="relative mb-6">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                    type="text"
+                    placeholder="Search by account name or type..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                />
+            </div>
+
+            {filteredAccounts.length === 0 ? (
+                <div className="rounded-3xl border border-border bg-card p-12 text-center">
+                    <div className="mx-auto max-w-md space-y-3">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/40">
+                            <Search className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground">
+                            No accounts found
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                            Try adjusting your search query.
+                        </p>
+                    </div>
+                </div>
+            ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredAccounts.map((account) => {
                     const Icon = ICON_MAP[account.icon] || Wallet;
                     const typeLabel = ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
 
@@ -112,10 +191,14 @@ export function AccountList() {
 
                             <div className="mt-4 space-y-1">
                                 <h3 className="text-lg font-semibold text-foreground">
-                                    {account.name}
+                                    {searchQuery.trim()
+                                        ? highlightText(account.name, searchQuery)
+                                        : account.name}
                                 </h3>
                                 <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                                    {typeLabel}
+                                    {searchQuery.trim()
+                                        ? highlightText(typeLabel, searchQuery)
+                                        : typeLabel}
                                 </p>
                             </div>
 
@@ -165,8 +248,9 @@ export function AccountList() {
                             </div>
                         </div>
                     );
-                })}
-            </div>
+                    })}
+                </div>
+            )}
 
             <EditAccountDialog
                 account={editingAccount}

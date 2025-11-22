@@ -212,3 +212,71 @@ export const passwordResetTokensRelations = relations(passwordResetTokens, ({ on
   }),
 }));
 
+// Category Folders
+export const categoryFolders = sqliteTable(
+  "categoryFolder",
+  {
+    id: text("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    icon: text("icon").notNull().default("banknote"),
+    color: text("color").notNull().default("#222222"),
+    createdAt: createdAtField(),
+    updatedAt: updatedAtField(),
+  },
+  (table) => ({
+    userIdIdx: index("categoryFolders_userId_idx").on(table.userId),
+  })
+);
+
+// Categories
+export const categories = sqliteTable(
+  "category",
+  {
+    id: text("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    folderId: text("folderId")
+      .notNull()
+      .references(() => categoryFolders.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  icon: text("icon").notNull().default("banknote"),
+  color: text("color").notNull().default("#222222"),
+  createdAt: createdAtField(),
+    updatedAt: updatedAtField(),
+  },
+  (table) => ({
+    userIdIdx: index("categories_userId_idx").on(table.userId),
+    folderIdIdx: index("categories_folderId_idx").on(table.folderId),
+  })
+);
+
+// Relations for categories
+export const categoryFoldersRelations = relations(categoryFolders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [categoryFolders.userId],
+    references: [users.id],
+  }),
+  categories: many(categories),
+}));
+
+export const categoriesRelations = relations(categories, ({ one }) => ({
+  user: one(users, {
+    fields: [categories.userId],
+    references: [users.id],
+  }),
+  folder: one(categoryFolders, {
+    fields: [categories.folderId],
+    references: [categoryFolders.id],
+  }),
+}));
+
