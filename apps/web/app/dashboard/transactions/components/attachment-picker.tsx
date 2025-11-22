@@ -83,7 +83,7 @@ export function AttachmentPicker({ attachment, existingAttachment, onSelect, onR
     : existingAttachment?.mimeType === "application/pdf";
   const displayName = attachment?.name || existingAttachment?.fileName || "";
   const displaySize = attachment ? `${(attachment.size / 1024).toFixed(2)} KB` : "";
-  const displayUrl = existingAttachment?.url || preview;
+  const displayUrl = existingAttachment?.url || preview || undefined;
 
   const handleCameraClick = async () => {
     try {
