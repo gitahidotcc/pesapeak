@@ -1,17 +1,38 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Upload, X, File, Image as ImageIcon, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface AttachmentPickerProps {
-  attachment: File | null;
-  onSelect: (file: File | null) => void;
+interface ExistingAttachment {
+  url: string;
+  fileName: string;
+  mimeType: string;
 }
 
-export function AttachmentPicker({ attachment, onSelect }: AttachmentPickerProps) {
+interface AttachmentPickerProps {
+  attachment: File | null;
+  existingAttachment?: ExistingAttachment | null;
+  onSelect: (file: File | null) => void;
+  onRemoveExisting?: () => void;
+}
+
+export function AttachmentPicker({ attachment, existingAttachment, onSelect, onRemoveExisting }: AttachmentPickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+
+  // Set preview from existing attachment when component mounts or existingAttachment changes
+  useEffect(() => {
+    if (existingAttachment && !attachment) {
+      if (existingAttachment.mimeType.startsWith("image/")) {
+        setPreview(existingAttachment.url);
+      } else {
+        setPreview(null);
+      }
+    } else if (!attachment) {
+      setPreview(null);
+    }
+  }, [existingAttachment, attachment]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,6 +73,18 @@ export function AttachmentPicker({ attachment, onSelect }: AttachmentPickerProps
     }
   };
 
+  // Determine what to display
+  const displayAttachment = attachment || existingAttachment;
+  const isImage = attachment 
+    ? attachment.type.startsWith("image/")
+    : existingAttachment?.mimeType.startsWith("image/");
+  const isPdf = attachment
+    ? attachment.type === "application/pdf"
+    : existingAttachment?.mimeType === "application/pdf";
+  const displayName = attachment?.name || existingAttachment?.fileName || "";
+  const displaySize = attachment ? `${(attachment.size / 1024).toFixed(2)} KB` : "";
+  const displayUrl = existingAttachment?.url || preview;
+
   const handleCameraClick = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -72,24 +105,43 @@ export function AttachmentPicker({ attachment, onSelect }: AttachmentPickerProps
         Attachment
       </label>
 
-      {attachment ? (
+      {displayAttachment ? (
         <div className="relative rounded-xl border border-border bg-muted/30 p-4">
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="absolute right-2 top-2 rounded-full bg-background p-1.5 shadow-sm transition-colors hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {(attachment || existingAttachment) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (attachment) {
+                  handleRemove();
+                } else if (existingAttachment && onRemoveExisting) {
+                  onRemoveExisting();
+                }
+              }}
+              className="absolute right-2 top-2 rounded-full bg-background p-1.5 shadow-sm transition-colors hover:bg-muted z-10"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
 
-          {preview ? (
+          {isImage && displayUrl ? (
             <div className="space-y-2">
               <img
-                src={preview}
+                src={displayUrl}
                 alt="Preview"
                 className="h-32 w-full rounded-lg object-cover"
               />
-              <p className="text-xs text-muted-foreground">{attachment.name}</p>
+              <p className="text-xs text-muted-foreground">{displayName}</p>
+            </div>
+          ) : isPdf && existingAttachment ? (
+            <div className="space-y-2">
+              <div className="rounded-lg border border-border bg-muted/20 p-4">
+                <iframe
+                  src={displayUrl}
+                  title={displayName}
+                  className="h-32 w-full rounded-lg"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">{displayName}</p>
             </div>
           ) : (
             <div className="flex items-center gap-3">
@@ -97,10 +149,13 @@ export function AttachmentPicker({ attachment, onSelect }: AttachmentPickerProps
                 <File className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">{attachment.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(attachment.size / 1024).toFixed(2)} KB
-                </p>
+                <p className="text-sm font-medium text-foreground">{displayName}</p>
+                {displaySize && (
+                  <p className="text-xs text-muted-foreground">{displaySize}</p>
+                )}
+                {existingAttachment && !attachment && (
+                  <p className="text-xs text-muted-foreground">Existing attachment</p>
+                )}
               </div>
             </div>
           )}

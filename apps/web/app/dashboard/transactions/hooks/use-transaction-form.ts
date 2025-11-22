@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { api } from "@/lib/trpc";
 import { toast } from "sonner";
-import type { TransactionFormData, TransactionType } from "../types/transaction";
+import type { TransactionFormData, TransactionType, ExistingAttachment } from "../types/transaction";
 import { validateTransactionForm } from "../validations/transaction-form";
 import { fileToBase64 } from "../utils/file-upload";
 
@@ -50,6 +50,7 @@ const getInitialFormData = (): TransactionFormData => {
     includeTime: true, // Prefill time by default
     notes: "",
     attachment: null,
+    existingAttachment: null,
   };
 };
 
@@ -69,6 +70,27 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
       const day = String(date.getDate()).padStart(2, "0");
       const dateStr = `${year}-${month}-${day}`;
 
+      // Build existing attachment URL if attachment exists
+      let existingAttachment: ExistingAttachment | null = null;
+      if (editingTransaction.attachmentPath && editingTransaction.attachmentFileName) {
+        // Extract userId and filename from attachmentPath
+        // Path format: dataDir/transactions/{userId}/{filename}
+        const normalizedPath = editingTransaction.attachmentPath.replace(/\\/g, "/");
+        const pathParts = normalizedPath.split("/");
+        const transactionsIndex = pathParts.findIndex((part) => part === "transactions");
+        if (transactionsIndex !== -1 && transactionsIndex + 2 < pathParts.length) {
+          const userId = pathParts[transactionsIndex + 1];
+          const filename = pathParts[transactionsIndex + 2];
+          const fileUrl = `/api/files/transactions/${userId}/${filename}`;
+          
+          existingAttachment = {
+            url: fileUrl,
+            fileName: editingTransaction.attachmentFileName,
+            mimeType: editingTransaction.attachmentMimeType || "application/octet-stream",
+          };
+        }
+      }
+
       setFormData({
         amount: (editingTransaction.amount / 100).toFixed(2),
         type: editingTransaction.type,
@@ -80,7 +102,8 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
         time: editingTransaction.time || "",
         includeTime: !!editingTransaction.time,
         notes: editingTransaction.notes || "",
-        attachment: null, // We don't load existing attachments into the form
+        attachment: null, // New file selection (if user wants to replace)
+        existingAttachment, // Existing attachment info for display
       });
     } else {
       setFormData(getInitialFormData());
@@ -153,6 +176,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
 
     try {
       // Convert file to base64 if present
+      // Only send attachment if a new file is selected (for updates, this replaces the existing one)
       let attachment: { fileName: string; mimeType: string; data: string } | undefined;
       if (formData.attachment) {
         const base64 = await fileToBase64(formData.attachment);
@@ -162,13 +186,15 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           data: base64,
         };
       }
+      // If editing and no new attachment is selected, don't send attachment field
+      // This preserves the existing attachment
 
       // Convert amount string to number
       const amount = parseFloat(formData.amount);
 
       if (editingTransaction) {
         // Update existing transaction
-        await updateTransaction.mutateAsync({
+        const updateData: any = {
           id: editingTransaction.id,
           type: formData.type,
           amount,
@@ -179,8 +205,20 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           date: formData.date,
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
-          attachment,
-        });
+        };
+        
+        // If a new file is selected, include it (replaces existing)
+        // If existingAttachment was removed (null), we need to signal deletion
+        // For now, if no new attachment and no existingAttachment, we don't send attachment field
+        // which means the existing one stays. To remove, we'd need backend support.
+        if (attachment) {
+          updateData.attachment = attachment;
+        } else if (!formData.existingAttachment && editingTransaction.attachmentPath) {
+          // User removed existing attachment - we'd need backend to support this
+          // For now, we'll leave it as is (existing attachment stays)
+        }
+        
+        await updateTransaction.mutateAsync(updateData);
       } else {
         // Create new transaction
         await createTransaction.mutateAsync({

@@ -258,7 +258,13 @@ export function AddTransactionDialog({
           {/* Attachment */}
           <AttachmentPicker
             attachment={formData.attachment}
+            existingAttachment={formData.existingAttachment}
             onSelect={(file) => updateField("attachment", file)}
+            onRemoveExisting={() => {
+              updateField("existingAttachment", null);
+              // When removing existing attachment, we need to signal to backend to delete it
+              // We'll handle this by setting a flag or sending null attachment
+            }}
           />
 
           <DialogFooter>

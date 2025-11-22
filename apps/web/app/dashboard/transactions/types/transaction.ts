@@ -1,5 +1,11 @@
 export type TransactionType = "income" | "expense" | "transfer";
 
+export type ExistingAttachment = {
+  url: string;
+  fileName: string;
+  mimeType: string;
+};
+
 export type TransactionFormData = {
   amount: string;
   type: TransactionType;
@@ -12,6 +18,7 @@ export type TransactionFormData = {
   includeTime: boolean;
   notes: string;
   attachment: File | null;
+  existingAttachment: ExistingAttachment | null;
 };
 
 export type TransactionFormErrors = Partial<Record<keyof TransactionFormData, string>>;
