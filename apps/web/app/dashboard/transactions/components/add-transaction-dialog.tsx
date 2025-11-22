@@ -17,14 +17,32 @@ import { DateTimePicker } from "./date-time-picker";
 import { AttachmentPicker } from "./attachment-picker";
 import type { TransactionType } from "../types/transaction";
 
+interface Transaction {
+  id: string;
+  type: "income" | "expense" | "transfer";
+  amount: number;
+  accountId: string | null;
+  categoryId: string | null;
+  fromAccountId: string | null;
+  toAccountId: string | null;
+  date: string;
+  time: string | null;
+  notes: string;
+  attachmentPath: string | null;
+  attachmentFileName: string | null;
+  attachmentMimeType: string | null;
+}
+
 interface AddTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editingTransaction?: Transaction | null;
 }
 
 export function AddTransactionDialog({
   open,
   onOpenChange,
+  editingTransaction,
 }: AddTransactionDialogProps) {
   const {
     formData,
@@ -38,7 +56,8 @@ export function AddTransactionDialog({
     resetForm,
     submit,
     isSubmitting,
-  } = useTransactionForm();
+    isEditing,
+  } = useTransactionForm(editingTransaction);
 
   // Set default account when dialog opens
   useEffect(() => {
@@ -104,7 +123,9 @@ export function AddTransactionDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Add Transaction</DialogTitle>
+          <DialogTitle className="text-2xl">
+            {isEditing ? "Edit Transaction" : "Add Transaction"}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -249,7 +270,13 @@ export function AddTransactionDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Adding..." : "Add Transaction"}
+              {isSubmitting
+                ? isEditing
+                  ? "Updating..."
+                  : "Adding..."
+                : isEditing
+                  ? "Update Transaction"
+                  : "Add Transaction"}
             </Button>
           </DialogFooter>
         </form>

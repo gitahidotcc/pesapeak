@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { ArrowRightLeft, Minus, Plus, type LucideIcon } from "lucide-react";
 import {
   Banknote,
@@ -27,6 +27,8 @@ import {
 import { api } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
+import { TransactionDetailsDialog } from "./transaction-details-dialog";
+import { AddTransactionDialog } from "./add-transaction-dialog";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   banknote: Banknote,
@@ -86,7 +88,32 @@ const formatTime = (time: string | null) => {
   return `${displayHour}:${minutes} ${ampm}`;
 };
 
+type Transaction = {
+  id: string;
+  type: "income" | "expense" | "transfer";
+  amount: number;
+  accountId: string | null;
+  categoryId: string | null;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  fromAccountId: string | null;
+  toAccountId: string | null;
+  date: string;
+  time: string | null;
+  notes: string;
+  attachmentPath: string | null;
+  attachmentFileName: string | null;
+  attachmentMimeType: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export function TransactionsList({ filter }: TransactionsListProps) {
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
   // Build query parameters based on filter
   const queryParams = useMemo(() => {
     const params: {
@@ -121,7 +148,7 @@ export function TransactionsList({ filter }: TransactionsListProps) {
 
   // Group transactions by date
   const groupedTransactions = useMemo(() => {
-    if (!transactions) return [];
+    if (!transactions || transactions.length === 0) return [];
 
     const grouped: Record<string, typeof transactions> = {};
     transactions.forEach((transaction) => {
@@ -240,7 +267,11 @@ export function TransactionsList({ filter }: TransactionsListProps) {
                 return (
                   <div
                     key={transaction.id}
-                    className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+                    onClick={() => {
+                      setSelectedTransaction(transaction);
+                      setIsDetailsOpen(true);
+                    }}
+                    className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50 cursor-pointer"
                   >
                     {/* Icon */}
                     <div
@@ -356,6 +387,31 @@ export function TransactionsList({ filter }: TransactionsListProps) {
           </div>
         );
       })}
+
+      {/* Transaction Details Dialog */}
+      <TransactionDetailsDialog
+        transaction={selectedTransaction}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        onEdit={(transaction) => {
+          setEditingTransaction(transaction);
+          setIsEditDialogOpen(true);
+        }}
+        accounts={accounts || []}
+        folders={folders || []}
+      />
+
+      {/* Edit Transaction Dialog */}
+      <AddTransactionDialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            setEditingTransaction(null);
+          }
+        }}
+        editingTransaction={editingTransaction}
+      />
     </div>
   );
 }
