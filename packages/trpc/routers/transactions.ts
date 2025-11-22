@@ -485,6 +485,19 @@ export const transactionsRouter = router({
         }
       }
 
+      // Fetch category data if categoryId exists
+      let categoryIcon: string | null = null;
+      let categoryColor: string | null = null;
+      if (newTransaction.categoryId) {
+        const category = await ctx.db.query.categories.findFirst({
+          where: eq(categories.id, newTransaction.categoryId),
+        });
+        if (category) {
+          categoryIcon = category.icon;
+          categoryColor = category.color;
+        }
+      }
+
       return {
         id: newTransaction.id,
         type: newTransaction.type as "income" | "expense" | "transfer",

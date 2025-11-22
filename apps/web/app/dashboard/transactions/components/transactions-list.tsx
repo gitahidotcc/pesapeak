@@ -53,6 +53,29 @@ const ICON_MAP: Record<string, LucideIcon> = {
   heart: Heart,
 };
 
+const ICON_MAP: Record<string, LucideIcon> = {
+  banknote: Banknote,
+  wallet: Wallet,
+  "credit-card": CreditCard,
+  "piggy-bank": PiggyBank,
+  coins: Coins,
+  landmark: Landmark,
+  building: Building,
+  "building-2": Building2,
+  home: Home,
+  briefcase: Briefcase,
+  "shopping-cart": ShoppingCart,
+  "trending-up": TrendingUp,
+  "dollar-sign": DollarSign,
+  euro: Euro,
+  bitcoin: Bitcoin,
+  smartphone: Smartphone,
+  car: Car,
+  plane: Plane,
+  gift: Gift,
+  heart: Heart,
+};
+
 interface TransactionsListProps {
   filter: PeriodFilter;
   selectedAccountId?: string | null;
