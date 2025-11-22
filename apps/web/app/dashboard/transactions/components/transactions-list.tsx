@@ -1,10 +1,55 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowRightLeft, Minus, Plus } from "lucide-react";
+import { ArrowRightLeft, Minus, Plus, type LucideIcon } from "lucide-react";
+import {
+  Banknote,
+  Wallet,
+  CreditCard,
+  PiggyBank,
+  Coins,
+  Landmark,
+  Building,
+  Building2,
+  Home,
+  Briefcase,
+  ShoppingCart,
+  TrendingUp,
+  DollarSign,
+  Euro,
+  Bitcoin,
+  Smartphone,
+  Car,
+  Plane,
+  Gift,
+  Heart,
+} from "lucide-react";
 import { api } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  banknote: Banknote,
+  wallet: Wallet,
+  "credit-card": CreditCard,
+  "piggy-bank": PiggyBank,
+  coins: Coins,
+  landmark: Landmark,
+  building: Building,
+  "building-2": Building2,
+  home: Home,
+  briefcase: Briefcase,
+  "shopping-cart": ShoppingCart,
+  "trending-up": TrendingUp,
+  "dollar-sign": DollarSign,
+  euro: Euro,
+  bitcoin: Bitcoin,
+  smartphone: Smartphone,
+  car: Car,
+  plane: Plane,
+  gift: Gift,
+  heart: Heart,
+};
 
 interface TransactionsListProps {
   filter: PeriodFilter;
@@ -174,33 +219,23 @@ export function TransactionsList({ filter }: TransactionsListProps) {
                   {formatDate(date)}
                 </h3>
               </div>
-              <div className="text-right">
-                <div
-                  className={cn(
-                    "text-sm font-semibold",
-                    dateTotal > 0
-                      ? "text-green-600 dark:text-green-400"
-                      : dateTotal < 0
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-muted-foreground"
-                  )}
-                >
-                  {dateTotal > 0 ? "+" : ""}
-                  {dateTotalFormatted}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {txs.length} {txs.length === 1 ? "transaction" : "transactions"}
-                </div>
+              <div className="text-xs text-muted-foreground">
+                {txs.length} {txs.length === 1 ? "transaction" : "transactions"}
               </div>
             </div>
 
             {/* Transactions List */}
             <div className="space-y-2">
               {txs.map((transaction) => {
-                const Icon = getTransactionIcon(transaction.type);
                 const isIncome = transaction.type === "income";
                 const isExpense = transaction.type === "expense";
                 const isTransfer = transaction.type === "transfer";
+                
+                // Use category icon if available, otherwise fall back to transaction type icon
+                const CategoryIcon = transaction.categoryIcon && ICON_MAP[transaction.categoryIcon]
+                  ? ICON_MAP[transaction.categoryIcon]
+                  : getTransactionIcon(transaction.type);
+                const categoryColor = transaction.categoryColor || undefined;
 
                 return (
                   <div
@@ -211,18 +246,44 @@ export function TransactionsList({ filter }: TransactionsListProps) {
                     <div
                       className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-lg",
-                        isIncome && "bg-green-100 dark:bg-green-900/30",
-                        isExpense && "bg-red-100 dark:bg-red-900/30",
-                        isTransfer && "bg-blue-100 dark:bg-blue-900/30"
+                        categoryColor
+                          ? undefined
+                          : isIncome && "bg-green-100 dark:bg-green-900/30",
+                        categoryColor
+                          ? undefined
+                          : isExpense && "bg-red-100 dark:bg-red-900/30",
+                        categoryColor
+                          ? undefined
+                          : isTransfer && "bg-blue-100 dark:bg-blue-900/30"
                       )}
+                      style={
+                        categoryColor
+                          ? {
+                              backgroundColor: `${categoryColor}20`,
+                            }
+                          : undefined
+                      }
                     >
-                      <Icon
+                      <CategoryIcon
                         className={cn(
                           "h-5 w-5",
-                          isIncome && "text-green-600 dark:text-green-400",
-                          isExpense && "text-red-600 dark:text-red-400",
-                          isTransfer && "text-blue-600 dark:text-blue-400"
+                          categoryColor
+                            ? undefined
+                            : isIncome && "text-green-600 dark:text-green-400",
+                          categoryColor
+                            ? undefined
+                            : isExpense && "text-red-600 dark:text-red-400",
+                          categoryColor
+                            ? undefined
+                            : isTransfer && "text-blue-600 dark:text-blue-400"
                         )}
+                        style={
+                          categoryColor
+                            ? {
+                                color: categoryColor,
+                              }
+                            : undefined
+                        }
                       />
                     </div>
 
@@ -274,6 +335,23 @@ export function TransactionsList({ filter }: TransactionsListProps) {
                   </div>
                 );
               })}
+              
+              {/* Date Total - Below last transaction */}
+              <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
+                <div
+                  className={cn(
+                    "text-sm font-semibold",
+                    dateTotal > 0
+                      ? "text-green-600 dark:text-green-400"
+                      : dateTotal < 0
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-muted-foreground"
+                  )}
+                >
+                  {dateTotal > 0 ? "+" : dateTotal < 0 ? "-" : ""}
+                  {dateTotalFormatted}
+                </div>
+              </div>
             </div>
           </div>
         );

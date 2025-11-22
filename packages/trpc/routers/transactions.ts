@@ -1,6 +1,6 @@
 import { and, desc, eq, sql, gte, lte } from "drizzle-orm";
 import { z } from "zod";
-import { transactions, financialAccounts } from "@pesapeak/db/schema";
+import { transactions, financialAccounts, categories } from "@pesapeak/db/schema";
 import { authedProcedure, router } from "../index";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -13,6 +13,8 @@ const transactionOutputSchema = z.object({
   amount: z.number(),
   accountId: z.string().nullable(),
   categoryId: z.string().nullable(),
+  categoryIcon: z.string().nullable(),
+  categoryColor: z.string().nullable(),
   fromAccountId: z.string().nullable(),
   toAccountId: z.string().nullable(),
   date: z.string(),
@@ -128,6 +130,9 @@ export const transactionsRouter = router({
         orderBy: (transaction) => desc(transaction.date),
         limit: input?.limit ?? 50,
         offset: input?.offset ?? 0,
+        with: {
+          category: true,
+        },
       });
 
 
@@ -137,6 +142,8 @@ export const transactionsRouter = router({
         amount: transaction.amount ?? 0,
         accountId: transaction.accountId ?? null,
         categoryId: transaction.categoryId ?? null,
+        categoryIcon: transaction.category?.icon ?? null,
+        categoryColor: transaction.category?.color ?? null,
         fromAccountId: transaction.fromAccountId ?? null,
         toAccountId: transaction.toAccountId ?? null,
         date: new Date(transaction.date ?? Date.now()).toISOString(),
@@ -258,12 +265,27 @@ export const transactionsRouter = router({
           .where(eq(financialAccounts.id, input.toAccountId!));
       }
 
+      // Fetch category data if categoryId exists
+      let categoryIcon: string | null = null;
+      let categoryColor: string | null = null;
+      if (newTransaction.categoryId) {
+        const category = await ctx.db.query.categories.findFirst({
+          where: eq(categories.id, newTransaction.categoryId),
+        });
+        if (category) {
+          categoryIcon = category.icon;
+          categoryColor = category.color;
+        }
+      }
+
       return {
         id: newTransaction.id,
         type: newTransaction.type as "income" | "expense" | "transfer",
         amount: newTransaction.amount ?? 0,
         accountId: newTransaction.accountId ?? null,
         categoryId: newTransaction.categoryId ?? null,
+        categoryIcon,
+        categoryColor,
         fromAccountId: newTransaction.fromAccountId ?? null,
         toAccountId: newTransaction.toAccountId ?? null,
         date: new Date(newTransaction.date ?? Date.now()).toISOString(),
@@ -370,12 +392,27 @@ export const transactionsRouter = router({
         throw new Error("Failed to update transaction");
       }
 
+      // Fetch category data if categoryId exists
+      let categoryIcon: string | null = null;
+      let categoryColor: string | null = null;
+      if (updated.categoryId) {
+        const category = await ctx.db.query.categories.findFirst({
+          where: eq(categories.id, updated.categoryId),
+        });
+        if (category) {
+          categoryIcon = category.icon;
+          categoryColor = category.color;
+        }
+      }
+
       return {
         id: updated.id,
         type: updated.type as "income" | "expense" | "transfer",
         amount: updated.amount ?? 0,
         accountId: updated.accountId ?? null,
         categoryId: updated.categoryId ?? null,
+        categoryIcon,
+        categoryColor,
         fromAccountId: updated.fromAccountId ?? null,
         toAccountId: updated.toAccountId ?? null,
         date: new Date(updated.date ?? Date.now()).toISOString(),
