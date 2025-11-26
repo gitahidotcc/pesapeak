@@ -12,7 +12,7 @@ export function AccountsStep({ context }: StepComponentProps) {
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase text-muted-foreground">Step 1 · Create accounts</p>
+        <p className="text-sm font-semibold uppercase text-muted-foreground">Step 2 · Create accounts</p>
         <h2 className="text-2xl font-bold text-card-foreground">Where is your money stored?</h2>
         <p className="text-sm text-muted-foreground">
           Add each account you use today so we can keep everything organized from day one.

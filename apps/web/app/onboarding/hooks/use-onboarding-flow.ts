@@ -3,10 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { api } from "@/lib/trpc";
 import type {
-  OnboardingCategory,
   OnboardingContext,
-  OnboardingImport,
-  OnboardingReviewItem,
   OnboardingStepDefinition,
 } from "@/app/onboarding/types/onboarding-flow";
 
@@ -22,29 +19,9 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
     description: "Tell us where your money lives today.",
   },
   {
-    id: "import-csv",
-    title: "Import CSV",
-    description: "Upload your transaction history file.",
-  },
-  {
-    id: "map-columns",
-    title: "Map Columns",
-    description: "Match your CSV columns to PesaPeak fields.",
-  },
-  {
-    id: "import-success",
-    title: "Import Success",
-    description: "Review what we imported and what to do next.",
-  },
-  {
-    id: "ai-setup",
-    title: "AI Categorization Setup",
-    description: "Configure AI to understand your spending.",
-  },
-  {
-    id: "ai-review",
-    title: "AI Categorization Review",
-    description: "Swipe through AI suggestions before finalizing.",
+    id: "categories",
+    title: "Setup Categories",
+    description: "Choose your starter categories for organizing transactions.",
   },
   {
     id: "balances",
@@ -56,85 +33,14 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
 export function useOnboardingFlow(initialStep: number = 0) {
   const [currentStep, setCurrentStep] = useState(initialStep);
 
-  const importHistory = useMemo<OnboardingImport[]>(() => {
-    return [
-      {
-        id: "import-01",
-        account: "Main Checking",
-        fileName: "checking-aug.csv",
-        importedAt: "Today · 2:18 PM",
-        status: "42 transactions imported",
-      },
-      {
-        id: "import-02",
-        account: "API Payroll",
-        fileName: "payroll-oct.csv",
-        importedAt: "Yesterday · 5:03 PM",
-        status: "Payroll history synced",
-      },
-    ];
-  }, []);
-
-  const categories = useMemo<OnboardingCategory[]>(() => {
-    return [
-      {
-        id: "groceries",
-        name: "Groceries",
-        description: "Essentials and food",
-        confidence: "92% sure",
-      },
-      {
-        id: "utilities",
-        name: "Utilities",
-        description: "Bills and subscriptions",
-        confidence: "87% sure",
-      },
-      {
-        id: "travel",
-        name: "Travel & Leisure",
-        description: "Flights, hotels, experiences",
-        confidence: "78% sure",
-      },
-    ];
-  }, []);
-
-  const reviewItems = useMemo<OnboardingReviewItem[]>(() => {
-    return [
-      {
-        id: "review-01",
-        merchant: "Safaricom PLC",
-        amount: "Ksh 3,450.00",
-        guessedCategory: "Telecom",
-        date: "Nov 18",
-      },
-      {
-        id: "review-02",
-        merchant: "Nairobi Matatu",
-        amount: "Ksh 1,200.00",
-        guessedCategory: "Transport",
-        date: "Nov 19",
-      },
-      {
-        id: "review-03",
-        merchant: "Garden City Mall",
-        amount: "Ksh 6,150.00",
-        guessedCategory: "Shopping",
-        date: "Nov 19",
-      },
-    ];
-  }, []);
-
   const accountsQuery = api.accounts.list.useQuery();
 
   const context = useMemo<OnboardingContext>(() => {
     return {
       accounts: accountsQuery.data ?? [],
       accountsLoading: accountsQuery.isLoading,
-      importHistory,
-      categories,
-      reviewItems,
     };
-  }, [accountsQuery.data, accountsQuery.isLoading, importHistory, categories, reviewItems]);
+  }, [accountsQuery.data, accountsQuery.isLoading]);
 
   const updateStepMutation = api.onboarding.updateStep.useMutation();
 
@@ -155,10 +61,6 @@ export function useOnboardingFlow(initialStep: number = 0) {
     goToStep(currentStep - 1);
   }, [currentStep, goToStep]);
 
-  const startImportFlow = useCallback(() => {
-    goToStep(2);
-  }, [goToStep]);
-
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
 
@@ -173,7 +75,6 @@ export function useOnboardingFlow(initialStep: number = 0) {
     goToNextStep,
     goToPreviousStep,
     goToStep,
-    startImportFlow,
     context,
   };
 }

@@ -3,12 +3,8 @@
 import type { ComponentType } from "react";
 
 import {
-    AiCategorizationReviewStep,
-    AiCategorizationSetupStep,
     AccountsStep,
-    ImportCsvStep,
-    ImportSuccessStep,
-    MapColumnsStep,
+    CategoriesStep,
     StartingBalancesStep,
     WelcomeStep,
 } from "@/app/onboarding/components/steps";
@@ -22,11 +18,7 @@ import { api } from "@/lib/trpc";
 const STEP_COMPONENTS: Record<string, ComponentType<StepComponentProps>> = {
     welcome: WelcomeStep,
     accounts: AccountsStep,
-    "import-csv": ImportCsvStep,
-    "map-columns": MapColumnsStep,
-    "import-success": ImportSuccessStep,
-    "ai-setup": AiCategorizationSetupStep,
-    "ai-review": AiCategorizationReviewStep,
+    categories: CategoriesStep,
     balances: StartingBalancesStep,
 };
 
@@ -39,7 +31,6 @@ export function OnboardingContent({ initialStep }: { initialStep: number }) {
         isLastStep,
         goToNextStep,
         goToPreviousStep,
-        startImportFlow,
         context,
     } = useOnboardingFlow(initialStep);
 
@@ -70,7 +61,7 @@ export function OnboardingContent({ initialStep }: { initialStep: number }) {
                     <Stepper steps={steps} currentStep={currentStep} />
                     <div className="rounded-3xl border border-border bg-card p-8 shadow-xl">
                         {StepComponent ? (
-                            <StepComponent context={context} onImportAgain={startImportFlow} />
+                            <StepComponent context={context} />
                         ) : (
                             <p className="text-sm text-muted-foreground">Pulling your onboarding flow together…</p>
                         )}

@@ -9,7 +9,7 @@ export function StartingBalancesStep({ context }: StepComponentProps) {
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase text-muted-foreground">Step 7 · Starting balances</p>
+        <p className="text-sm font-semibold uppercase text-muted-foreground">Step 4 · Starting balances</p>
         <h2 className="text-2xl font-bold text-card-foreground">Seed the balances you want to begin with</h2>
         <p className="text-sm text-muted-foreground">
           Set each account’s starting balance before the AI begins calculating projections.
