@@ -1,5 +1,5 @@
 /**
- * CSV parser utilities for different bank formats
+ * CSV parser utilities for MPesa format
  */
 
 export type ParsedTransaction = {
@@ -11,22 +11,13 @@ export type ParsedTransaction = {
   reference?: string;
 };
 
-export type CsvFormat = "equity" | "mpesa" | "unknown";
+export type CsvFormat = "mpesa" | "unknown";
 
 /**
  * Detect the CSV format based on headers
  */
 export function detectCsvFormat(headers: string[]): CsvFormat {
   const headerStr = headers.join(",").toLowerCase();
-
-  // Equity Bank format
-  if (
-    headerStr.includes("transaction details") &&
-    headerStr.includes("payment reference") &&
-    headerStr.includes("value date")
-  ) {
-    return "equity";
-  }
 
   // MPesa format
   if (
@@ -57,65 +48,19 @@ function parseAmount(value: string): number {
 }
 
 /**
- * Parse date string in DD/MM/YYYY or YYYY-MM-DD format
+ * Parse date string in YYYY-MM-DD format
  */
 function parseDate(dateStr: string): string {
   if (!dateStr || dateStr.trim() === "") return "";
 
   const cleaned = dateStr.trim().replace(/"/g, "");
 
-  // Try DD/MM/YYYY format (Equity Bank)
-  if (cleaned.includes("/")) {
-    const [day, month, year] = cleaned.split("/");
-    if (day && month && year) {
-      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-    }
-  }
-
-  // Try YYYY-MM-DD format (MPesa - already in this format)
+  // MPesa format is already YYYY-MM-DD
   if (cleaned.match(/^\d{4}-\d{2}-\d{2}/)) {
     return cleaned.split(" ")[0]; // Take only the date part, ignore time
   }
 
   return cleaned;
-}
-
-/**
- * Parse Equity Bank CSV format
- */
-function parseEquityRow(row: string[], headers: string[]): ParsedTransaction | null {
-  // Find column indices
-  const descIdx = headers.findIndex((h) => h.toLowerCase().includes("transaction details"));
-  const refIdx = headers.findIndex((h) => h.toLowerCase().includes("payment reference"));
-  const dateIdx = headers.findIndex((h) => h.toLowerCase().includes("value date"));
-  const creditIdx = headers.findIndex((h) => h.toLowerCase().includes("credit"));
-  const debitIdx = headers.findIndex((h) => h.toLowerCase().includes("debit"));
-  const balanceIdx = headers.findIndex((h) => h.toLowerCase().includes("balance"));
-
-  if (descIdx === -1 || dateIdx === -1) return null;
-
-  const description = (row[descIdx] || "").trim().replace(/"/g, "");
-  const dateStr = row[dateIdx] || "";
-
-  // Skip empty rows or rows without proper data
-  if (!description || !dateStr) return null;
-
-  const credit = parseAmount(row[creditIdx] || "");
-  const debit = parseAmount(row[debitIdx] || "");
-  const balance = parseAmount(row[balanceIdx] || "");
-
-  // Determine transaction type
-  const amount = credit > 0 ? credit : -debit;
-  if (amount === 0) return null; // Skip zero-amount transactions
-
-  return {
-    date: parseDate(dateStr),
-    description,
-    amount,
-    type: credit > 0 ? "credit" : "debit",
-    balance: balance > 0 ? balance : undefined,
-    reference: row[refIdx]?.trim().replace(/"/g, "") || undefined,
-  };
 }
 
 /**
@@ -183,7 +128,7 @@ export function parseCsv(csvText: string): {
     // Detect format
     const format = detectCsvFormat(headers);
     if (format === "unknown") {
-      errors.push("Unknown CSV format. Supported formats: Equity Bank, MPesa");
+      errors.push("Unknown CSV format. Supported format: MPesa");
       return { format, transactions, errors };
     }
 
@@ -200,9 +145,7 @@ export function parseCsv(csvText: string): {
 
         let transaction: ParsedTransaction | null = null;
 
-        if (format === "equity") {
-          transaction = parseEquityRow(row, headers);
-        } else if (format === "mpesa") {
+        if (format === "mpesa") {
           transaction = parseMpesaRow(row, headers);
         }
 
@@ -217,11 +160,12 @@ export function parseCsv(csvText: string): {
     if (transactions.length === 0) {
       errors.push("No valid transactions found in CSV file");
     }
+
+    return { format, transactions, errors };
   } catch (error) {
     errors.push(`Failed to parse CSV: ${error instanceof Error ? error.message : String(error)}`);
+    return { format: "unknown" as CsvFormat, transactions, errors };
   }
-
-  return { format: "unknown" as CsvFormat, transactions, errors };
 }
 
 /**
