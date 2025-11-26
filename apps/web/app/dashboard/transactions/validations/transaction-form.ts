@@ -13,6 +13,9 @@ export const transactionFormSchema = z.object({
   fromAccountId: z.string().optional(),
   toAccountId: z.string().optional(),
   categoryId: z.string().optional(),
+  hasFee: z.boolean().default(false),
+  feeAmount: z.string().optional(),
+  feeCategoryId: z.string().optional(),
   date: z.string().min(1, "Date is required"),
   time: z.string().optional(),
   includeTime: z.boolean().default(false),
@@ -57,6 +60,25 @@ export const transactionFormSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: "From and to accounts must be different",
         path: ["toAccountId"],
+      });
+    }
+  }
+
+  // Fee validation - only for expense/transfer
+  if (data.hasFee) {
+    if (!(data.type === "expense" || data.type === "transfer")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Fees are only supported for expense or transfer transactions",
+        path: ["hasFee"],
+      });
+    }
+
+    if (!data.feeAmount || isNaN(parseFloat(data.feeAmount)) || parseFloat(data.feeAmount) <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Fee amount must be a positive number",
+        path: ["feeAmount"],
       });
     }
   }

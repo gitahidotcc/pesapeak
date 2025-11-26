@@ -299,6 +299,11 @@ export const transactions = sqliteTable(
     // For transfer transactions
     fromAccountId: text("fromAccountId").references(() => financialAccounts.id, { onDelete: "cascade" }),
     toAccountId: text("toAccountId").references(() => financialAccounts.id, { onDelete: "cascade" }),
+    // Fee / linked transaction metadata
+    parentTransactionId: text("parentTransactionId").references(() => transactions.id, {
+      onDelete: "cascade",
+    }),
+    isFee: integer("isFee", { mode: "boolean" }).default(false),
     // Date and time
     date: integer("date", { mode: "timestamp" }).notNull(),
     time: text("time"), // HH:mm format or null
@@ -317,6 +322,9 @@ export const transactions = sqliteTable(
     toAccountIdIdx: index("transactions_toAccountId_idx").on(table.toAccountId),
     categoryIdIdx: index("transactions_categoryId_idx").on(table.categoryId),
     dateIdx: index("transactions_date_idx").on(table.date),
+    parentTransactionIdIdx: index("transactions_parentTransactionId_idx").on(
+      table.parentTransactionId
+    ),
   })
 );
 

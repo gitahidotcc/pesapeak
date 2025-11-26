@@ -55,7 +55,7 @@ export function ImportCsvStep({ context }: StepComponentProps) {
 
         newFiles.push({
           file,
-          format: result.format === "equity" ? "Equity Bank" : result.format === "mpesa" ? "MPesa" : "Unknown",
+          format: result.format === "mpesa" ? "MPesa" : "Unknown",
           transactionCount: result.transactions.length,
           parsed: result.transactions,
         });
@@ -104,7 +104,7 @@ export function ImportCsvStep({ context }: StepComponentProps) {
     <section className="space-y-6">
       <div className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
-          Import your transaction history from CSV files. We support <span className="font-semibold text-foreground">Equity Bank</span> and <span className="font-semibold text-foreground">MPesa</span> CSV formats.
+          Import your transaction history from CSV files. We support <span className="font-semibold text-foreground">MPesa</span> CSV format.
         </p>
       </div>
 
@@ -119,7 +119,7 @@ export function ImportCsvStep({ context }: StepComponentProps) {
         <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
         <p className="mt-4 text-lg font-semibold text-card-foreground">Drop CSV files here</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Supported formats: Equity Bank, MPesa • Max 10MB per file
+          Supported format: MPesa • Max 10MB per file
         </p>
         <button
           type="button"

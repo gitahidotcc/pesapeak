@@ -73,6 +73,8 @@ interface Transaction {
   categoryColor: string | null;
   fromAccountId: string | null;
   toAccountId: string | null;
+  parentTransactionId: string | null;
+  isFee: boolean;
   date: string;
   time: string | null;
   notes: string;

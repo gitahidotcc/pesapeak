@@ -98,6 +98,8 @@ type Transaction = {
   categoryColor: string | null;
   fromAccountId: string | null;
   toAccountId: string | null;
+  parentTransactionId: string | null;
+  isFee: boolean;
   date: string;
   time: string | null;
   notes: string;
@@ -253,7 +255,9 @@ export function TransactionsList({ filter }: TransactionsListProps) {
 
             {/* Transactions List */}
             <div className="space-y-2">
-              {txs.map((transaction) => {
+              {txs
+                .filter((transaction) => !transaction.isFee)
+                .map((transaction) => {
                 const isIncome = transaction.type === "income";
                 const isExpense = transaction.type === "expense";
                 const isTransfer = transaction.type === "transfer";
@@ -264,15 +268,20 @@ export function TransactionsList({ filter }: TransactionsListProps) {
                   : getTransactionIcon(transaction.type);
                 const categoryColor = transaction.categoryColor || undefined;
 
+                const feeLines =
+                  transactions?.filter(
+                    (tx) => tx.parentTransactionId === transaction.id && tx.isFee
+                  ) ?? [];
+
                 return (
-                  <div
-                    key={transaction.id}
-                    onClick={() => {
-                      setSelectedTransaction(transaction);
-                      setIsDetailsOpen(true);
-                    }}
-                    className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50 cursor-pointer"
-                  >
+                  <div key={transaction.id} className="space-y-1">
+                    <div
+                      onClick={() => {
+                        setSelectedTransaction(transaction);
+                        setIsDetailsOpen(true);
+                      }}
+                      className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50 cursor-pointer"
+                    >
                     {/* Icon */}
                     <div
                       className={cn(
@@ -343,26 +352,46 @@ export function TransactionsList({ filter }: TransactionsListProps) {
                       </div>
                     </div>
 
-                    {/* Amount */}
-                    <div
-                      className={cn(
-                        "text-right font-semibold",
-                        isIncome && "text-green-600 dark:text-green-400",
-                        isExpense && "text-red-600 dark:text-red-400",
-                        isTransfer && "text-blue-600 dark:text-blue-400"
-                      )}
-                    >
-                      {isIncome && "+"}
-                      {isExpense && "-"}
-                      {formatCurrency(
-                        transaction.amount,
-                        accounts?.find(
-                          (acc) =>
-                            acc.id === transaction.accountId ||
-                            acc.id === transaction.fromAccountId
-                        )?.currency || "USD"
-                      )}
+                      {/* Amount */}
+                      <div
+                        className={cn(
+                          "text-right font-semibold",
+                          isIncome && "text-green-600 dark:text-green-400",
+                          isExpense && "text-red-600 dark:text-red-400",
+                          isTransfer && "text-blue-600 dark:text-blue-400"
+                        )}
+                      >
+                        {isIncome && "+"}
+                        {isExpense && "-"}
+                        {formatCurrency(
+                          transaction.amount,
+                          accounts?.find(
+                            (acc) =>
+                              acc.id === transaction.accountId ||
+                              acc.id === transaction.fromAccountId
+                          )?.currency || "USD"
+                        )}
+                      </div>
                     </div>
+
+                    {/* Fee rows (if any) */}
+                    {feeLines.map((fee) => (
+                      <div
+                        key={fee.id}
+                        className="ml-10 flex items-center justify-between rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-2 text-xs"
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-foreground">Fee</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {getCategoryName(fee.categoryId)} •{" "}
+                            {getAccountName(fee.accountId || transaction.accountId)}
+                          </span>
+                        </div>
+                        <div className="font-semibold text-red-500 dark:text-red-400">
+                          -{formatCurrency(fee.amount, accounts?.[0]?.currency || "USD")}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 );
               })}

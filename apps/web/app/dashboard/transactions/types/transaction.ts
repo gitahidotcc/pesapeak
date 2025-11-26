@@ -13,6 +13,10 @@ export type TransactionFormData = {
   fromAccountId: string; // For transfer
   toAccountId: string; // For transfer
   categoryId: string;
+  // Optional fee (only for expense/transfer)
+  hasFee: boolean;
+  feeAmount: string;
+  feeCategoryId: string;
   date: string; // ISO date string
   time: string; // HH:mm format or empty
   includeTime: boolean;

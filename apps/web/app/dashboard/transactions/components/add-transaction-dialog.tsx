@@ -224,6 +224,66 @@ export function AddTransactionDialog({
             )}
           </div>
 
+          {/* Optional Fee */}
+          {(formData.type === "expense" || formData.type === "transfer") && (
+            <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Fee (optional)
+                  </h3>
+                  {formData.type === "transfer" && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Fee will be charged from the source (From Account).
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateField("hasFee", !formData.hasFee)}
+                  className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {formData.hasFee ? "Remove fee" : "Add fee"}
+                </button>
+              </div>
+
+              {formData.hasFee && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-foreground">
+                      Fee amount
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      min="0"
+                      value={formData.feeAmount}
+                      onChange={(e) => updateField("feeAmount", e.target.value)}
+                      placeholder="0.00"
+                      className={`w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                        errors.feeAmount ? "border-destructive" : ""
+                      }`}
+                    />
+                    {errors.feeAmount && (
+                      <p className="text-xs text-destructive">{errors.feeAmount}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-foreground">
+                      Fee category
+                    </label>
+                    <CategoryPicker
+                      categories={categories}
+                      selectedCategoryId={formData.feeCategoryId}
+                      onSelect={(id) => updateField("feeCategoryId", id)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Date & Time */}
           <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">

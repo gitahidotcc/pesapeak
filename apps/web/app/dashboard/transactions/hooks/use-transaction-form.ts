@@ -45,6 +45,9 @@ const getInitialFormData = (): TransactionFormData => {
     fromAccountId: "",
     toAccountId: "",
     categoryId: "",
+    hasFee: false,
+    feeAmount: "",
+    feeCategoryId: "",
     date,
     time,
     includeTime: true, // Prefill time by default
@@ -98,6 +101,9 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
         fromAccountId: editingTransaction.fromAccountId || "",
         toAccountId: editingTransaction.toAccountId || "",
         categoryId: editingTransaction.categoryId || "",
+        hasFee: false,
+        feeAmount: "",
+        feeCategoryId: "",
         date: dateStr,
         time: editingTransaction.time || "",
         includeTime: !!editingTransaction.time,
@@ -206,6 +212,13 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
         };
+        if (formData.hasFee && formData.feeAmount) {
+          const feeAmount = parseFloat(formData.feeAmount);
+          updateData.fee = {
+            amount: feeAmount,
+            categoryId: formData.feeCategoryId || undefined,
+          };
+        }
         
         // If a new file is selected, include it (replaces existing)
         // If existingAttachment was removed (null), we need to signal deletion
@@ -221,7 +234,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
         await updateTransaction.mutateAsync(updateData);
       } else {
         // Create new transaction
-        await createTransaction.mutateAsync({
+        const payload: any = {
           type: formData.type,
           amount,
           accountId: formData.accountId || undefined,
@@ -232,7 +245,15 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
           attachment,
-        });
+        };
+        if (formData.hasFee && formData.feeAmount) {
+          const feeAmount = parseFloat(formData.feeAmount);
+          payload.fee = {
+            amount: feeAmount,
+            categoryId: formData.feeCategoryId || undefined,
+          };
+        }
+        await createTransaction.mutateAsync(payload);
       }
     } catch (error) {
       // Error is handled by mutation onError
