@@ -14,7 +14,8 @@ export const nextAuth = createMiddleware<{
   };
 }>(async (c, next) => {
   const ctx = await createContextFromRequest(c.req.raw);
-  c.set("ctx", ctx);
+  // Narrow the context type for Hono variables – runtime shape matches `Context`
+  c.set("ctx", ctx as Context);
   await next();
 });
 

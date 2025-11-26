@@ -529,7 +529,7 @@ export const transactionsRouter = router({
           where: and(
             eq(transactions.parentTransactionId, id),
             eq(transactions.userId, ctx.user.id),
-            eq(transactions.isFee, 1)
+            eq(transactions.isFee, true)
           ),
         });
 

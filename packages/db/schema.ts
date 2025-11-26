@@ -299,10 +299,8 @@ export const transactions = sqliteTable(
     // For transfer transactions
     fromAccountId: text("fromAccountId").references(() => financialAccounts.id, { onDelete: "cascade" }),
     toAccountId: text("toAccountId").references(() => financialAccounts.id, { onDelete: "cascade" }),
-    // Fee / linked transaction metadata
-    parentTransactionId: text("parentTransactionId").references(() => transactions.id, {
-      onDelete: "cascade",
-    }),
+    // Fee / linked transaction metadata (self-referencing via app logic; no DB FK to avoid circular typing)
+    parentTransactionId: text("parentTransactionId"),
     isFee: integer("isFee", { mode: "boolean" }).default(false),
     // Date and time
     date: integer("date", { mode: "timestamp" }).notNull(),
