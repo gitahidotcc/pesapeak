@@ -6,6 +6,7 @@ import { api } from "@/lib/trpc";
 import { PeriodFilterDialog, type PeriodFilter } from "./period-filter-dialog";
 import { TransactionsList } from "./transactions-list";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
   try {
@@ -118,13 +119,23 @@ export function TransactionsPageClient() {
       </header>
 
       {/* Period Filter */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <PeriodFilterDialog
           filter={filter}
           onFilterChange={setFilter}
           availableMonths={availableMonths}
           availableYears={availableYears}
         />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setFilter({ type: "all" })}
+          disabled={filter.type === "all"}
+        >
+          Clear filter
+        </Button>
       </div>
 
       {/* Income vs Expenses Cards */}

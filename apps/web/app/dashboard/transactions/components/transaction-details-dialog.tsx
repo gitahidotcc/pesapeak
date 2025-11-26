@@ -30,6 +30,10 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -132,12 +136,14 @@ export function TransactionDetailsDialog({
   folders,
 }: TransactionDetailsDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const utils = api.useUtils();
   const deleteTransaction = api.transactions.delete.useMutation({
     onSuccess: () => {
       toast.success("Transaction deleted successfully");
       utils.transactions.list.invalidate();
       utils.accounts.list.invalidate();
+      setIsConfirmOpen(false);
       onOpenChange(false);
     },
     onError: (error) => {
@@ -185,10 +191,7 @@ export function TransactionDetailsDialog({
     return account?.currency || "USD";
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this transaction?")) {
-      return;
-    }
+  const handleDeleteConfirmed = async () => {
     setIsDeleting(true);
     await deleteTransaction.mutateAsync({ id: transaction.id });
   };
@@ -217,7 +220,7 @@ export function TransactionDetailsDialog({
             <Button
               variant="destructive"
               size="sm"
-              onClick={handleDelete}
+              onClick={() => setIsConfirmOpen(true)}
               disabled={isDeleting}
               className="gap-2"
             >
@@ -447,6 +450,37 @@ export function TransactionDetailsDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={isConfirmOpen} onOpenChange={(open) => !isDeleting && setIsConfirmOpen(open)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete transaction</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently remove this transaction from your
+              history.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfirmOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteConfirmed}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

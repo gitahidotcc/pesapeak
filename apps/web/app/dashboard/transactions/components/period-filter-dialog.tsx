@@ -12,7 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type PeriodType = "month" | "year" | "range";
+export type PeriodType = "all" | "month" | "year" | "range";
+
+type PeriodTab = Exclude<PeriodType, "all">;
 
 export interface PeriodFilter {
   type: PeriodType;
@@ -36,7 +38,11 @@ export function PeriodFilterDialog({
   availableYears,
 }: PeriodFilterDialogProps) {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<PeriodType>(filter.type);
+  const [activeTab, setActiveTab] = useState<PeriodTab>(
+    filter.type === "year" || filter.type === "range" ? filter.type : "month"
+  );
+
+  const hasActiveFilter = filter.type !== "all";
 
   const monthsByYear = useMemo(() => {
     const grouped: Record<number, number[]> = {};
@@ -80,6 +86,13 @@ export function PeriodFilterDialog({
     }
   };
 
+  const handleClearFilter = () => {
+    onFilterChange({
+      type: "all",
+    });
+    setOpen(false);
+  };
+
   const getFilterLabel = () => {
     if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
       const date = new Date(filter.year, filter.month, 1);
@@ -92,6 +105,9 @@ export function PeriodFilterDialog({
       const start = new Date(filter.startDate);
       const end = new Date(filter.endDate);
       return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+    }
+    if (filter.type === "all") {
+      return "All time";
     }
     return "Select Period";
   };
@@ -106,26 +122,40 @@ export function PeriodFilterDialog({
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 rounded-full border-border/60 bg-background/60 px-4 py-2 text-sm shadow-sm hover:bg-background"
         >
           <Calendar className="h-4 w-4" />
           <span>{getFilterLabel()}</span>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-xl rounded-2xl border border-border/60 bg-background/95 shadow-xl">
         <DialogHeader>
-          <DialogTitle>Select Period</DialogTitle>
+          <div className="flex items-center justify-between gap-4">
+            <DialogTitle className="text-lg font-semibold tracking-tight">
+              Select Period
+            </DialogTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleClearFilter}
+              disabled={!hasActiveFilter}
+            >
+              Clear filter
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="mt-2 space-y-6">
           {/* Tabs */}
-          <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+          <div className="inline-flex w-full rounded-2xl border border-border/60 bg-muted/40 p-1">
             <button
               type="button"
               onClick={() => setActiveTab("month")}
               className={cn(
-                "flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all",
+                "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
                 activeTab === "month"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -137,7 +167,7 @@ export function PeriodFilterDialog({
               type="button"
               onClick={() => setActiveTab("year")}
               className={cn(
-                "flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all",
+                "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
                 activeTab === "year"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -149,7 +179,7 @@ export function PeriodFilterDialog({
               type="button"
               onClick={() => setActiveTab("range")}
               className={cn(
-                "flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all",
+                "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
                 activeTab === "range"
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
