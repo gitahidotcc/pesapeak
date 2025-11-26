@@ -376,6 +376,16 @@ export const transactionsRouter = router({
 
       // Handle attachment
       if (updateData.attachment) {
+        // Delete old attachment if it exists and has a different path
+        if (existing.attachmentPath) {
+          try {
+            await fs.unlink(existing.attachmentPath);
+          } catch (error) {
+            // Ignore errors if file doesn't exist
+            console.warn("Failed to delete old attachment:", error);
+          }
+        }
+        
         const saved = await saveAttachment(ctx.user.id, id, updateData.attachment);
         updateValues.attachmentPath = saved.path;
         updateValues.attachmentFileName = saved.fileName;

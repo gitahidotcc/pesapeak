@@ -215,7 +215,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           updateData.attachment = attachment;
         } else if (!formData.existingAttachment && editingTransaction.attachmentPath) {
           // User removed existing attachment - we'd need backend to support this
-          // For now, we'll leave it as is (existing attachment stays)
+          // todo For now, we'll leave it as is (existing attachment stays)
         }
         
         await updateTransaction.mutateAsync(updateData);
