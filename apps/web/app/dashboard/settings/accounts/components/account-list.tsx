@@ -45,8 +45,10 @@ import {
 import {
     MoreVertical,
     ChevronRight,
+    Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CreateAccountForm } from "./create-account-form";
 
 const ICON_MAP: Record<string, LucideIcon> = {
     banknote: Banknote,
@@ -145,7 +147,8 @@ export function AccountList() {
         return accounts.filter((account) => {
             const accountName = account.name.toLowerCase();
             const typeLabel = (ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType).toLowerCase();
-            return accountName.includes(query) || typeLabel.includes(query);
+            const rawType = account.accountType.toLowerCase();
+            return accountName.includes(query) || typeLabel.includes(query) || rawType.includes(query);
         });
     }, [accounts, searchQuery]);
 
@@ -179,6 +182,16 @@ export function AccountList() {
                     <p className="text-sm text-muted-foreground">
                         Create your first account to start tracking your finances.
                     </p>
+                    <div className="pt-4">
+                        <CreateAccountForm
+                            trigger={
+                                <Button>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create Account
+                                </Button>
+                            }
+                        />
+                    </div>
                 </div>
             </div>
         );
@@ -207,8 +220,18 @@ export function AccountList() {
                             No accounts found
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                            Try adjusting your search query.
+                            Try adjusting your search query or create a new account.
                         </p>
+                        <div className="pt-4">
+                            <CreateAccountForm
+                                trigger={
+                                    <Button variant="outline">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Create Account
+                                    </Button>
+                                }
+                            />
+                        </div>
                     </div>
                 </div>
             ) : (

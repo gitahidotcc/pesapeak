@@ -26,7 +26,7 @@ const ACCOUNT_TYPES = [
     { value: "cash", label: "Cash" },
 ] as const;
 
-export function CreateAccountForm() {
+export function CreateAccountForm({ trigger }: { trigger?: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [name, setName] = useState("");
     const [accountType, setAccountType] = useState<string>("savings");
@@ -93,14 +93,16 @@ export function CreateAccountForm() {
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-10 w-10 rounded-full bg-muted/50 hover:bg-muted"
-                >
-                    <Plus className="h-5 w-5" />
-                    <span className="sr-only">Create New Account</span>
-                </Button>
+                {trigger || (
+                    <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-10 w-10 rounded-full bg-muted/50 hover:bg-muted"
+                    >
+                        <Plus className="h-5 w-5" />
+                        <span className="sr-only">Create New Account</span>
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
