@@ -19,6 +19,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { EditAccountDialog } from "./edit-account-dialog";
 import { DeleteAccountDialog } from "./delete-account-dialog";
+import { AccountActionsSheet } from "./account-actions-sheet";
+import { useRouter } from "next/navigation";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const ICON_MAP: Record<string, LucideIcon> = {
     banknote: Banknote,
@@ -90,6 +100,9 @@ export function AccountList() {
     const [deletingAccount, setDeletingAccount] = useState<{ id: string; name: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
+    const [selectedAccountForSheet, setSelectedAccountForSheet] = useState<any>(null);
+    const router = useRouter();
+
     // Filter accounts based on search query (name and type)
     const filteredAccounts = useMemo(() => {
         if (!accounts) return [];
@@ -102,6 +115,10 @@ export function AccountList() {
             return accountName.includes(query) || typeLabel.includes(query);
         });
     }, [accounts, searchQuery]);
+
+    const handleShowTransactions = (account: any) => {
+        router.push(`/dashboard/transactions?accountId=${account.id}`);
+    };
 
     if (isLoading) {
         return (
@@ -164,99 +181,127 @@ export function AccountList() {
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {filteredAccounts.map((account) => {
-                    const Icon = ICON_MAP[account.icon] || Wallet;
-                    const typeLabel = ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
+                        const Icon = ICON_MAP[account.icon] || Wallet;
+                        const typeLabel = ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
 
-                    return (
-                        <div
-                            key={account.id}
-                            className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md"
-                        >
-                            <div className="flex items-start justify-between">
-                                <div
-                                    className="flex h-12 w-12 items-center justify-center rounded-xl"
-                                    style={{ backgroundColor: `${account.color}20` }}
-                                >
-                                    <Icon
-                                        className="h-6 w-6"
-                                        style={{ color: account.color }}
-                                    />
+                        return (
+                            <div
+                                key={account.id}
+                                onClick={() => {
+                                    // Only open sheet on mobile
+                                    if (window.innerWidth < 640) {
+                                        setSelectedAccountForSheet(account);
+                                    }
+                                }}
+                                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md sm:cursor-default cursor-pointer"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div
+                                        className="flex h-12 w-12 items-center justify-center rounded-xl"
+                                        style={{ backgroundColor: `${account.color}20` }}
+                                    >
+                                        <Icon
+                                            className="h-6 w-6"
+                                            style={{ color: account.color }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {account.defaultAccount && (
+                                            <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
+                                                Default
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    {account.defaultAccount && (
-                                        <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-                                            Default
+
+                                <div className="mt-4 space-y-1">
+                                    <h3 className="text-lg font-semibold text-foreground">
+                                        {searchQuery.trim()
+                                            ? highlightText(account.name, searchQuery)
+                                            : account.name}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                                        {searchQuery.trim()
+                                            ? highlightText(typeLabel, searchQuery)
+                                            : typeLabel}
+                                    </p>
+                                </div>
+
+                                <div className="mt-4 space-y-2">
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="text-xs font-medium text-muted-foreground">
+                                            Balance
                                         </span>
+                                        <span className="text-xl font-bold text-foreground">
+                                            {formatCurrency(account.totalBalance, account.currency)}
+                                        </span>
+                                    </div>
+
+                                    {account.notes && (
+                                        <p className="text-xs text-muted-foreground line-clamp-2">
+                                            {account.notes}
+                                        </p>
                                     )}
                                 </div>
-                            </div>
 
-                            <div className="mt-4 space-y-1">
-                                <h3 className="text-lg font-semibold text-foreground">
-                                    {searchQuery.trim()
-                                        ? highlightText(account.name, searchQuery)
-                                        : account.name}
-                                </h3>
-                                <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                                    {searchQuery.trim()
-                                        ? highlightText(typeLabel, searchQuery)
-                                        : typeLabel}
-                                </p>
-                            </div>
-
-                            <div className="mt-4 space-y-2">
-                                <div className="flex items-baseline justify-between">
-                                    <span className="text-xs font-medium text-muted-foreground">
-                                        Balance
+                                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span className="font-medium uppercase tracking-wider">
+                                        {account.currency}
                                     </span>
-                                    <span className="text-xl font-bold text-foreground">
-                                        {formatCurrency(account.totalBalance, account.currency)}
+                                    <span>•</span>
+                                    <span>
+                                        Created {new Date(account.createdAt).toLocaleDateString()}
                                     </span>
                                 </div>
 
-                                {account.notes && (
-                                    <p className="text-xs text-muted-foreground line-clamp-2">
-                                        {account.notes}
-                                    </p>
-                                )}
+                                {/* Action buttons - Hidden on mobile, visible on desktop */}
+                                <div className="mt-4 hidden sm:flex justify-end">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 p-0"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <span className="sr-only">Open menu</span>
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleShowTransactions(account);
+                                                }}
+                                            >
+                                                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                                Transactions
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingAccount(account);
+                                                }}
+                                            >
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="text-destructive focus:text-destructive"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeletingAccount({ id: account.id, name: account.name });
+                                                }}
+                                            >
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </div>
-
-                            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="font-medium uppercase tracking-wider">
-                                    {account.currency}
-                                </span>
-                                <span>•</span>
-                                <span>
-                                    Created {new Date(account.createdAt).toLocaleDateString()}
-                                </span>
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                                <Link
-                                    href={`/dashboard/transactions?accountId=${account.id}`}
-                                    className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                                >
-                                    <ArrowRightLeft className="h-4 w-4" />
-                                    Transactions
-                                </Link>
-                                <button
-                                    onClick={() => setEditingAccount(account)}
-                                    className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                                >
-                                    <Pencil className="h-4 w-4" />
-                                    Edit
-                                </button>
-                                <button
-                                    onClick={() => setDeletingAccount({ id: account.id, name: account.name })}
-                                    className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    );
+                        );
                     })}
                 </div>
             )}
@@ -272,6 +317,24 @@ export function AccountList() {
                 accountName={deletingAccount?.name || ""}
                 open={!!deletingAccount}
                 onOpenChange={(open) => !open && setDeletingAccount(null)}
+            />
+
+            <AccountActionsSheet
+                account={selectedAccountForSheet}
+                open={!!selectedAccountForSheet}
+                onOpenChange={(open) => !open && setSelectedAccountForSheet(null)}
+                onEdit={(account) => {
+                    setEditingAccount(account);
+                    setSelectedAccountForSheet(null);
+                }}
+                onDelete={(account) => {
+                    setDeletingAccount({ id: account.id, name: account.name });
+                    setSelectedAccountForSheet(null);
+                }}
+                onShowTransactions={(account) => {
+                    handleShowTransactions(account);
+                    setSelectedAccountForSheet(null);
+                }}
             />
         </>
     );
