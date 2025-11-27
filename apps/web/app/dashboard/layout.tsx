@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
-import type { Session } from "@/lib/auth";
 import { Sidebar } from "./components/sidebar";
 import { BottomNav } from "./components/bottom-nav";
 
