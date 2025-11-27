@@ -32,5 +32,6 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 export type OnboardingContext = {
   accounts: OnboardingAccount[];
   accountsLoading: boolean;
+  goToNextStep: () => void;
 };
 

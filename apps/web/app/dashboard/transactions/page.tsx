@@ -3,17 +3,23 @@ import { getServerSession } from "@/lib/auth-actions";
 import { FloatingActionButtonWrapper } from "./components/floating-action-button-wrapper";
 import { TransactionsPageClient } from "./components/transactions-page-client";
 
-export default async function TransactionsPage() {
-    const session = await getServerSession();
+interface TransactionsPageProps {
+  searchParams?: {
+    accountId?: string;
+  };
+}
 
-    if (!session) {
-        redirect("/auth/sign-in");
-    }
+export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
+  const session = await getServerSession();
 
-    return (
-        <>
-            <TransactionsPageClient />
-            <FloatingActionButtonWrapper />
-        </>
-    );
+  if (!session) {
+    redirect("/auth/sign-in");
+  }
+
+  return (
+    <>
+      <TransactionsPageClient initialAccountId={searchParams?.accountId ?? null} />
+      <FloatingActionButtonWrapper />
+    </>
+  );
 }

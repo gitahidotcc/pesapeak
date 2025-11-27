@@ -1,7 +1,8 @@
-import { and, desc, eq, sql, gte, lte } from "drizzle-orm";
+import { and, desc, eq, sql, gte, lte, or } from "drizzle-orm";
 import { z } from "zod";
 import { transactions, financialAccounts, categories } from "@pesapeak/db/schema";
 import { authedProcedure, router } from "../index";
+import type { AuthedContext } from "../index";
 import fs from "node:fs/promises";
 import path from "node:path";
 import config from "@pesapeak/shared/config";
@@ -93,62 +94,93 @@ async function saveAttachment(
   };
 }
 
+const transactionFiltersSchema = z.object({
+  accountId: z.string().optional(),
+  categoryId: z.string().optional(),
+  type: z.enum(["income", "expense", "transfer"]).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+const listInputSchema = transactionFiltersSchema.extend({
+  limit: z.number().min(1).max(100).default(50),
+  cursor: z.number().min(0).optional(),
+});
+
+type TransactionFilters = z.infer<typeof transactionFiltersSchema>;
+
+const buildTransactionConditions = (ctx: AuthedContext, filters?: TransactionFilters) => {
+  const conditions = [eq(transactions.userId, ctx.user.id)];
+
+  if (!filters) {
+    return conditions;
+  }
+
+  if (filters.accountId) {
+    const accountCondition = or(
+      eq(transactions.accountId, filters.accountId),
+      eq(transactions.fromAccountId, filters.accountId),
+      eq(transactions.toAccountId, filters.accountId)
+    );
+    if (accountCondition) {
+      conditions.push(accountCondition);
+    }
+  }
+
+  if (filters.categoryId) {
+    conditions.push(eq(transactions.categoryId, filters.categoryId));
+  }
+
+  if (filters.type) {
+    conditions.push(eq(transactions.type, filters.type));
+  }
+
+  if (filters.startDate) {
+    const [year, month, day] = filters.startDate.split("-").map(Number);
+    const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    conditions.push(gte(transactions.date, startDate));
+  }
+
+  if (filters.endDate) {
+    const [year, month, day] = filters.endDate.split("-").map(Number);
+    const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    conditions.push(lte(transactions.date, endDate));
+  }
+
+  return conditions;
+};
+
 export const transactionsRouter = router({
   list: authedProcedure
-    .input(
-      z
-        .object({
-          accountId: z.string().optional(),
-          categoryId: z.string().optional(),
-          type: z.enum(["income", "expense", "transfer"]).optional(),
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-          limit: z.number().min(1).max(100).default(50),
-          offset: z.number().min(0).default(0),
-        })
-        .optional()
+    .input(listInputSchema)
+    .output(
+      z.object({
+        items: z.array(transactionOutputSchema),
+        nextCursor: z.number().nullable(),
+      })
     )
-    .output(z.array(transactionOutputSchema))
     .query(async ({ ctx, input }) => {
-      const conditions = [eq(transactions.userId, ctx.user.id)];
+      const { limit, cursor, ...filters } = input;
+      const offset = cursor ?? 0;
+      const conditions = buildTransactionConditions(ctx, filters);
 
-
-      if (input?.accountId) {
-        conditions.push(eq(transactions.accountId, input.accountId));
-      }
-      if (input?.categoryId) {
-        conditions.push(eq(transactions.categoryId, input.categoryId));
-      }
-      if (input?.type) {
-        conditions.push(eq(transactions.type, input.type));
-      }
-      if (input?.startDate) {
-        // Parse date string as UTC to avoid timezone issues
-        const [year, month, day] = input.startDate.split("-").map(Number);
-        const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-        // Use gte with Date object - transactions.date is a Date object (mode: "timestamp")
-        conditions.push(gte(transactions.date, startDate));
-      }
-      if (input?.endDate) {
-        // Parse date string as UTC to avoid timezone issues
-        const [year, month, day] = input.endDate.split("-").map(Number);
-        const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-        // Use lte with Date object - transactions.date is a Date object (mode: "timestamp")
-        conditions.push(lte(transactions.date, endDate));
-      }
-
-      const results = await ctx.db.query.transactions.findMany({
+      const queryOptions: any = {
         where: and(...conditions),
-        orderBy: (transaction) => desc(transaction.date),
-        limit: input?.limit ?? 50,
-        offset: input?.offset ?? 0,
+        orderBy: (transaction: any) => desc(transaction.date),
+        limit: limit + 1,
+        offset,
         with: {
           category: true,
         },
-      });
+      };
 
+      const results = await ctx.db.query.transactions.findMany(queryOptions);
 
-      return results.map((transaction) => ({
+      const hasMore = results.length > limit;
+      const transactionList = hasMore ? results.slice(0, limit) : results;
+
+      return {
+        items: transactionList.map((transaction: any) => ({
         id: transaction.id,
         type: transaction.type as "income" | "expense" | "transfer",
         amount: transaction.amount ?? 0,
@@ -167,8 +199,80 @@ export const transactionsRouter = router({
         attachmentFileName: transaction.attachmentFileName ?? null,
         attachmentMimeType: transaction.attachmentMimeType ?? null,
         createdAt: new Date(transaction.createdAt ?? Date.now()).toISOString(),
-        updatedAt: new Date(transaction.updatedAt ?? Date.now()).toISOString(),
-      }));
+          updatedAt: new Date(transaction.updatedAt ?? Date.now()).toISOString(),
+        })),
+        nextCursor: hasMore ? offset + limit : null,
+      };
+    }),
+
+  summary: authedProcedure
+    .input(transactionFiltersSchema.optional())
+    .output(
+      z.object({
+        income: z.number(),
+        expenses: z.number(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const conditions = buildTransactionConditions(ctx, input);
+      const [result] = await ctx.db
+        .select({
+          income: sql`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+          expenses: sql`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        })
+        .from(transactions)
+        .where(and(...conditions));
+
+      return {
+        income: Number(result?.income ?? 0),
+        expenses: Number(result?.expenses ?? 0),
+      };
+    }),
+
+  periods: authedProcedure
+    .output(
+      z.object({
+        availableMonths: z.array(z.object({ year: z.number(), month: z.number() })),
+        availableYears: z.array(z.number()),
+      })
+    )
+    .query(async ({ ctx }) => {
+      const rows = await ctx.db.query.transactions.findMany({
+        where: eq(transactions.userId, ctx.user.id),
+        columns: {
+          date: transactions.date,
+        },
+      });
+
+      const months = new Set<string>();
+      const years = new Set<number>();
+
+      rows.forEach((row) => {
+        if (!row.date) return;
+        const date = new Date(row.date);
+        if (Number.isNaN(date.getTime())) return;
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth();
+        years.add(year);
+        months.add(`${year}-${month}`);
+      });
+
+      const availableMonths = Array.from(months)
+        .map((key) => {
+          const [year, month] = key.split("-").map(Number);
+          return { year, month };
+        })
+        .sort((a, b) => {
+          if (a.year !== b.year) {
+            return b.year - a.year;
+          }
+          return b.month - a.month;
+        });
+
+      return {
+        availableMonths,
+        availableYears: Array.from(years).sort((a, b) => b - a),
+      };
     }),
 
   create: authedProcedure

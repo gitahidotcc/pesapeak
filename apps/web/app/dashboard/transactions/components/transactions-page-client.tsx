@@ -3,10 +3,10 @@
 import { useState, useMemo } from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { api } from "@/lib/trpc";
-import { PeriodFilterDialog, type PeriodFilter } from "./period-filter-dialog";
+import { type PeriodFilter } from "./period-filter-dialog";
+import { TransactionsFilterDialog } from "./transactions-filter-dialog";
 import { TransactionsList } from "./transactions-list";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
   try {
@@ -20,7 +20,11 @@ const formatCurrency = (amount: number, currency: string = "USD") => {
   }
 };
 
-export function TransactionsPageClient() {
+interface TransactionsPageClientProps {
+  initialAccountId?: string | null;
+}
+
+export function TransactionsPageClient({ initialAccountId = null }: TransactionsPageClientProps) {
   // Default to current month
   const now = new Date();
   const [filter, setFilter] = useState<PeriodFilter>({
@@ -28,33 +32,16 @@ export function TransactionsPageClient() {
     month: now.getMonth(),
     year: now.getFullYear(),
   });
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(initialAccountId);
 
-  // Build query parameters for fetching all transactions to determine available periods
-  const { data: allTransactions } = api.transactions.list.useQuery({});
-
-  // Extract available months and years from transactions
+  const { data: accounts } = api.accounts.list.useQuery();
+  const { data: periodsData } = api.transactions.periods.useQuery();
   const { availableMonths, availableYears } = useMemo(() => {
-    if (!allTransactions) return { availableMonths: [], availableYears: [] };
-
-    const months = new Set<string>();
-    const years = new Set<number>();
-
-    allTransactions.forEach((tx) => {
-      const date = new Date(tx.date);
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      years.add(year);
-      months.add(`${year}-${month}`);
-    });
-
     return {
-      availableMonths: Array.from(months).map((key) => {
-        const [y, m] = key.split("-").map(Number);
-        return { year: y, month: m };
-      }),
-      availableYears: Array.from(years),
+      availableMonths: periodsData?.availableMonths ?? [],
+      availableYears: periodsData?.availableYears ?? [],
     };
-  }, [allTransactions]);
+  }, [periodsData]);
 
   // Build query parameters based on filter
   const queryParams = useMemo(() => {
@@ -62,18 +49,24 @@ export function TransactionsPageClient() {
       type?: "income" | "expense" | "transfer";
       startDate?: string;
       endDate?: string;
+      accountId?: string;
     } = {};
 
     if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
       // Use UTC to avoid timezone issues
-      const startDate = new Date(Date.UTC(filter.year, filter.month, 1));
-      const endDate = new Date(Date.UTC(filter.year, filter.month + 1, 0, 23, 59, 59));
+      // Start: first day of the month at 00:00:00 UTC
+      const startDate = new Date(Date.UTC(filter.year, filter.month, 1, 0, 0, 0, 0));
+      // End: last day of the month at 23:59:59.999 UTC
+      // Using month + 1 with day 0 gives us the last day of the current month
+      const endDate = new Date(Date.UTC(filter.year, filter.month + 1, 0, 23, 59, 59, 999));
       params.startDate = startDate.toISOString().split("T")[0];
       params.endDate = endDate.toISOString().split("T")[0];
     } else if (filter.type === "year" && filter.year !== undefined) {
       // Use UTC to avoid timezone issues
-      const startDate = new Date(Date.UTC(filter.year, 0, 1));
-      const endDate = new Date(Date.UTC(filter.year, 11, 31, 23, 59, 59));
+      // Start: January 1st at 00:00:00 UTC
+      const startDate = new Date(Date.UTC(filter.year, 0, 1, 0, 0, 0, 0));
+      // End: December 31st at 23:59:59.999 UTC
+      const endDate = new Date(Date.UTC(filter.year, 11, 31, 23, 59, 59, 999));
       params.startDate = startDate.toISOString().split("T")[0];
       params.endDate = endDate.toISOString().split("T")[0];
     } else if (filter.type === "range" && filter.startDate && filter.endDate) {
@@ -81,30 +74,19 @@ export function TransactionsPageClient() {
       params.endDate = filter.endDate;
     }
 
+    if (selectedAccountId) {
+      params.accountId = selectedAccountId;
+    }
+
     return params;
-  }, [filter]);
+  }, [filter, selectedAccountId]);
 
-  const { data: transactions, isLoading } = api.transactions.list.useQuery(queryParams);
-  const { data: accounts } = api.accounts.list.useQuery();
+  const { data: summaryData } = api.transactions.summary.useQuery(queryParams, {
+    keepPreviousData: true,
+  });
 
-  // Calculate income and expenses
-  const { income, expenses } = useMemo(() => {
-    if (!transactions) return { income: 0, expenses: 0 };
-
-    let incomeTotal = 0;
-    let expensesTotal = 0;
-
-    transactions.forEach((tx) => {
-      if (tx.type === "income") {
-        incomeTotal += tx.amount;
-      } else if (tx.type === "expense") {
-        expensesTotal += tx.amount;
-      }
-      // Transfers are excluded from income/expense totals
-    });
-
-    return { income: incomeTotal, expenses: expensesTotal };
-  }, [transactions]);
+  const income = summaryData?.income ?? 0;
+  const expenses = summaryData?.expenses ?? 0;
 
   const currency = accounts?.[0]?.currency || "USD";
   const netAmount = income - expenses;
@@ -118,25 +100,18 @@ export function TransactionsPageClient() {
         </p>
       </header>
 
-      {/* Period Filter */}
-      <div className="flex items-center justify-between gap-3">
-        <PeriodFilterDialog
-          filter={filter}
-          onFilterChange={setFilter}
+      {/* Filters */}
+      {accounts && accounts.length > 0 && (
+        <TransactionsFilterDialog
+          periodFilter={filter}
+          onPeriodFilterChange={setFilter}
+          selectedAccountId={selectedAccountId}
+          onAccountChange={setSelectedAccountId}
+          accounts={accounts}
           availableMonths={availableMonths}
           availableYears={availableYears}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => setFilter({ type: "all" })}
-          disabled={filter.type === "all"}
-        >
-          Clear filter
-        </Button>
-      </div>
+      )}
 
       {/* Income vs Expenses Cards */}
       <div className="grid gap-4 md:grid-cols-2">
@@ -194,7 +169,10 @@ export function TransactionsPageClient() {
       )}
 
       {/* Transactions List */}
-      <TransactionsList filter={filter} />
+      <TransactionsList 
+        filter={filter} 
+        selectedAccountId={selectedAccountId}
+      />
     </div>
   );
 }

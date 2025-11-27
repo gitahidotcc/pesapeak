@@ -60,6 +60,7 @@ type FolderSelection = {
 };
 
 export function CategoriesStep({ context }: StepComponentProps) {
+  const { goToNextStep } = context;
   const utils = api.useUtils();
   const [folderSelections, setFolderSelections] = useState<FolderSelection[]>(() =>
     STARTER_CATEGORIES.map((folder) => ({
@@ -78,41 +79,49 @@ export function CategoriesStep({ context }: StepComponentProps) {
 
   const toggleFolder = (folderIndex: number) => {
     setFolderSelections((prev) => {
-      const newSelections = [...prev];
-      const folderSelection = newSelections[folderIndex];
-      folderSelection.selected = !folderSelection.selected;
-      // If folder is deselected, deselect all categories
-      if (!folderSelection.selected) {
-        Object.keys(folderSelection.categorySelections).forEach(
-          (key) => (folderSelection.categorySelections[key] = false)
-        );
-      } else {
+      const newSelections = prev.map((fs, idx) => {
+        if (idx !== folderIndex) return fs;
+        
+        const newSelected = !fs.selected;
+        const newCategorySelections = { ...fs.categorySelections };
+        
+        // If folder is deselected, deselect all categories
         // If folder is selected, select all categories
-        Object.keys(folderSelection.categorySelections).forEach(
-          (key) => (folderSelection.categorySelections[key] = true)
-        );
-      }
+        Object.keys(newCategorySelections).forEach((key) => {
+          newCategorySelections[key] = newSelected;
+        });
+        
+        return {
+          ...fs,
+          selected: newSelected,
+          categorySelections: newCategorySelections,
+        };
+      });
       return newSelections;
     });
   };
 
   const toggleCategory = (folderIndex: number, categoryName: string) => {
     setFolderSelections((prev) => {
-      const newSelections = [...prev];
-      const categorySelection = newSelections[folderIndex].categorySelections[categoryName];
-      newSelections[folderIndex].categorySelections[categoryName] = !categorySelection;
-      // If any category is selected, ensure folder is selected
-      if (!categorySelection) {
-        newSelections[folderIndex].selected = true;
-      } else {
+      const newSelections = prev.map((fs, idx) => {
+        if (idx !== folderIndex) return fs;
+        
+        const currentCategorySelection = fs.categorySelections[categoryName];
+        const newCategorySelections = {
+          ...fs.categorySelections,
+          [categoryName]: !currentCategorySelection,
+        };
+        
+        // If any category is selected, ensure folder is selected
         // If no categories are selected, deselect folder
-        const hasSelectedCategory = Object.values(newSelections[folderIndex].categorySelections).some(
-          (selected) => selected
-        );
-        if (!hasSelectedCategory) {
-          newSelections[folderIndex].selected = false;
-        }
-      }
+        const hasSelectedCategory = Object.values(newCategorySelections).some((selected) => selected);
+        
+        return {
+          ...fs,
+          selected: hasSelectedCategory,
+          categorySelections: newCategorySelections,
+        };
+      });
       return newSelections;
     });
   };
@@ -175,6 +184,8 @@ export function CategoriesStep({ context }: StepComponentProps) {
         toast.error(`Some categories failed to create: ${errors.join(", ")}`);
       } else {
         toast.success("Categories created successfully!");
+        // Navigate to success step
+        goToNextStep();
       }
     } catch (error) {
       toast.error("Failed to create categories. Please try again.");

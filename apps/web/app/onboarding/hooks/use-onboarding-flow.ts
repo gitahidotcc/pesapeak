@@ -24,9 +24,9 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
     description: "Choose your starter categories for organizing transactions.",
   },
   {
-    id: "balances",
-    title: "Starting Balances",
-    description: "Seed the account balances you want to begin with.",
+    id: "success",
+    title: "All Set!",
+    description: "You're ready to start using PesaPeak.",
   },
 ];
 
@@ -34,13 +34,6 @@ export function useOnboardingFlow(initialStep: number = 0) {
   const [currentStep, setCurrentStep] = useState(initialStep);
 
   const accountsQuery = api.accounts.list.useQuery();
-
-  const context = useMemo<OnboardingContext>(() => {
-    return {
-      accounts: accountsQuery.data ?? [],
-      accountsLoading: accountsQuery.isLoading,
-    };
-  }, [accountsQuery.data, accountsQuery.isLoading]);
 
   const updateStepMutation = api.onboarding.updateStep.useMutation();
 
@@ -56,6 +49,14 @@ export function useOnboardingFlow(initialStep: number = 0) {
   const goToNextStep = useCallback(() => {
     goToStep(currentStep + 1);
   }, [currentStep, goToStep]);
+
+  const context = useMemo<OnboardingContext>(() => {
+    return {
+      accounts: accountsQuery.data ?? [],
+      accountsLoading: accountsQuery.isLoading,
+      goToNextStep,
+    };
+  }, [accountsQuery.data, accountsQuery.isLoading, goToNextStep]);
 
   const goToPreviousStep = useCallback(() => {
     goToStep(currentStep - 1);

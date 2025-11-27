@@ -11,8 +11,7 @@ export function WelcomeStep(_props: StepComponentProps) {
           Let&apos;s get your finances organized
         </h1>
         <p className="mt-3 text-base text-muted-foreground">
-          PesaPeak guides you through setting up accounts, importing history, and training AI for smart
-          categorization before you land on the dashboard.
+          PesaPeak guides you through setting up your accounts and organizing your categories before you land on the dashboard.
         </p>
       </div>
     </section>

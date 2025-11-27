@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ArrowRightLeft, Minus, Plus, type LucideIcon } from "lucide-react";
 import {
   Banknote,
@@ -55,6 +55,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 interface TransactionsListProps {
   filter: PeriodFilter;
+  selectedAccountId?: string | null;
 }
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
@@ -110,30 +111,37 @@ type Transaction = {
   updatedAt: string;
 };
 
-export function TransactionsList({ filter }: TransactionsListProps) {
+const PAGE_SIZE = 50;
+
+export function TransactionsList({
+  filter,
+  selectedAccountId,
+}: TransactionsListProps) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Build query parameters based on filter
-  const queryParams = useMemo(() => {
+  const { data: accounts } = api.accounts.list.useQuery();
+  const { data: folders } = api.categories.list.useQuery();
+
+  const filterParams = useMemo(() => {
     const params: {
       type?: "income" | "expense" | "transfer";
       startDate?: string;
       endDate?: string;
+      accountId?: string;
     } = {};
 
     if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
-      // Use UTC to avoid timezone issues
-      const startDate = new Date(Date.UTC(filter.year, filter.month, 1));
-      const endDate = new Date(Date.UTC(filter.year, filter.month + 1, 0, 23, 59, 59));
+      const startDate = new Date(Date.UTC(filter.year, filter.month, 1, 0, 0, 0, 0));
+      const endDate = new Date(Date.UTC(filter.year, filter.month + 1, 0, 23, 59, 59, 999));
       params.startDate = startDate.toISOString().split("T")[0];
       params.endDate = endDate.toISOString().split("T")[0];
     } else if (filter.type === "year" && filter.year !== undefined) {
-      // Use UTC to avoid timezone issues
-      const startDate = new Date(Date.UTC(filter.year, 0, 1));
-      const endDate = new Date(Date.UTC(filter.year, 11, 31, 23, 59, 59));
+      const startDate = new Date(Date.UTC(filter.year, 0, 1, 0, 0, 0, 0));
+      const endDate = new Date(Date.UTC(filter.year, 11, 31, 23, 59, 59, 999));
       params.startDate = startDate.toISOString().split("T")[0];
       params.endDate = endDate.toISOString().split("T")[0];
     } else if (filter.type === "range" && filter.startDate && filter.endDate) {
@@ -141,14 +149,55 @@ export function TransactionsList({ filter }: TransactionsListProps) {
       params.endDate = filter.endDate;
     }
 
+    if (selectedAccountId) {
+      params.accountId = selectedAccountId;
+    }
+
     return params;
-  }, [filter]);
+  }, [filter, selectedAccountId]);
 
-  const { data: transactions, isLoading } = api.transactions.list.useQuery(queryParams);
-  const { data: accounts } = api.accounts.list.useQuery();
-  const { data: folders } = api.categories.list.useQuery();
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isLoading,
+    isFetchingNextPage,
+    status,
+  } = api.transactions.list.useInfiniteQuery(
+    {
+      ...filterParams,
+      limit: PAGE_SIZE,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      refetchOnWindowFocus: false,
+    }
+  );
 
-  // Group transactions by date
+  const transactions = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap((page) => page.items);
+  }, [data]);
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    if (!hasNextPage) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    });
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
   const groupedTransactions = useMemo(() => {
     if (!transactions || transactions.length === 0) return [];
 
@@ -167,7 +216,6 @@ export function TransactionsList({ filter }: TransactionsListProps) {
       .map(([date, txs]) => ({
         date,
         transactions: txs.sort((a, b) => {
-          // Sort by time if available, otherwise by creation time
           if (a.time && b.time) {
             return b.time.localeCompare(a.time);
           }
@@ -176,7 +224,6 @@ export function TransactionsList({ filter }: TransactionsListProps) {
       }));
   }, [transactions]);
 
-  // Calculate totals for each date group
   const getDateTotal = (txs: typeof transactions) => {
     if (!txs) return 0;
     return txs.reduce((sum, tx) => {
@@ -214,7 +261,7 @@ export function TransactionsList({ filter }: TransactionsListProps) {
     }
   };
 
-  if (isLoading) {
+  if (status === "loading" && transactions.length === 0) {
     return (
       <div className="py-12 text-center text-muted-foreground">
         Loading transactions...
@@ -222,7 +269,7 @@ export function TransactionsList({ filter }: TransactionsListProps) {
     );
   }
 
-  if (!transactions || transactions.length === 0) {
+  if (status === "success" && transactions.length === 0) {
     return (
       <div className="py-12 text-center text-muted-foreground">
         No transactions found for the selected period
@@ -416,6 +463,20 @@ export function TransactionsList({ filter }: TransactionsListProps) {
           </div>
         );
       })}
+
+      {/* Infinite Scroll Trigger */}
+      <div ref={sentinelRef} className="py-4">
+        {isFetchingNextPage && hasNextPage && (
+          <div className="text-center text-sm text-muted-foreground">
+            Loading more transactions...
+          </div>
+        )}
+        {!hasNextPage && transactions.length > 0 && (
+          <div className="text-center text-sm text-muted-foreground">
+            No more transactions to load
+          </div>
+        )}
+      </div>
 
       {/* Transaction Details Dialog */}
       <TransactionDetailsDialog

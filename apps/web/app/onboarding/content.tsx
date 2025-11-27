@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import {
     AccountsStep,
     CategoriesStep,
-    StartingBalancesStep,
+    CategoriesSuccessStep,
     WelcomeStep,
 } from "@/app/onboarding/components/steps";
 import type { StepComponentProps } from "@/app/onboarding/types/step-component";
@@ -19,7 +19,7 @@ const STEP_COMPONENTS: Record<string, ComponentType<StepComponentProps>> = {
     welcome: WelcomeStep,
     accounts: AccountsStep,
     categories: CategoriesStep,
-    balances: StartingBalancesStep,
+    success: CategoriesSuccessStep,
 };
 
 export function OnboardingContent({ initialStep }: { initialStep: number }) {

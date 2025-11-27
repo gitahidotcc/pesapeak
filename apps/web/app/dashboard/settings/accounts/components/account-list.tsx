@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import type React from "react";
 import { api } from "@/lib/trpc";
+import Link from "next/link";
 import {
     Banknote,
     CreditCard,
@@ -13,6 +14,7 @@ import {
     Pencil,
     Trash2,
     Search,
+    ArrowRightLeft,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { EditAccountDialog } from "./edit-account-dialog";
@@ -230,7 +232,14 @@ export function AccountList() {
                             </div>
 
                             {/* Action buttons */}
-                            <div className="mt-4 flex gap-2">
+                            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                                <Link
+                                    href={`/dashboard/transactions?accountId=${account.id}`}
+                                    className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                                >
+                                    <ArrowRightLeft className="h-4 w-4" />
+                                    Transactions
+                                </Link>
                                 <button
                                     onClick={() => setEditingAccount(account)}
                                     className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
