@@ -11,6 +11,8 @@ import {
 import {
     Dialog,
     DialogContent,
+    DialogTitle,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { AppRouter } from "@pesapeak/trpc/routers/_app";
@@ -75,13 +77,13 @@ export function AccountActionsSheet({
                                     style={{ color: account.color }}
                                 />
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-foreground">
+                            <div className="flex-1 text-left">
+                                <DialogTitle className="text-sm font-semibold text-foreground">
                                     {account.name}
-                                </h3>
-                                <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground uppercase tracking-wide">
                                     {account.accountType}
-                                </p>
+                                </DialogDescription>
                             </div>
                         </div>
                     </div>
@@ -140,10 +142,13 @@ export function AccountActionsSheet({
                                     style={{ color: account.color }}
                                 />
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-foreground">
+                            <div className="flex-1 text-left">
+                                <DialogTitle className="text-sm font-semibold text-foreground">
                                     {account.name}
-                                </h3>
+                                </DialogTitle>
+                                <DialogDescription className="sr-only">
+                                    Account Actions
+                                </DialogDescription>
                             </div>
                         </div>
 

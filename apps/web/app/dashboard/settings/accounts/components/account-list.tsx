@@ -10,6 +10,21 @@ import {
     Coins,
     Wallet,
     PiggyBank,
+    Landmark,
+    Building,
+    Building2,
+    Home,
+    Briefcase,
+    ShoppingCart,
+    TrendingUp,
+    DollarSign,
+    Euro,
+    Bitcoin,
+    Smartphone,
+    Car,
+    Plane,
+    Gift,
+    Heart,
     type LucideIcon,
     Pencil,
     Trash2,
@@ -27,7 +42,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+import {
+    MoreVertical,
+    ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -36,6 +54,21 @@ const ICON_MAP: Record<string, LucideIcon> = {
     "credit-card": CreditCard,
     "piggy-bank": PiggyBank,
     coins: Coins,
+    landmark: Landmark,
+    building: Building,
+    "building-2": Building2,
+    home: Home,
+    briefcase: Briefcase,
+    "shopping-cart": ShoppingCart,
+    "trending-up": TrendingUp,
+    "dollar-sign": DollarSign,
+    euro: Euro,
+    bitcoin: Bitcoin,
+    smartphone: Smartphone,
+    car: Car,
+    plane: Plane,
+    gift: Gift,
+    heart: Heart,
 };
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
@@ -179,126 +212,139 @@ export function AccountList() {
                     </div>
                 </div>
             ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {filteredAccounts.map((account) => {
-                        const Icon = ICON_MAP[account.icon] || Wallet;
-                        const typeLabel = ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
+                <div className="space-y-8">
+                    {Object.entries(
+                        filteredAccounts.reduce((acc, account) => {
+                            const type = ACCOUNT_TYPE_LABELS[account.accountType] || account.accountType;
+                            if (!acc[type]) acc[type] = [];
+                            acc[type].push(account);
+                            return acc;
+                        }, {} as Record<string, typeof filteredAccounts>)
+                    ).map(([type, groupAccounts]) => {
+                        // Calculate totals by currency for this group
+                        const totalsByCurrency = groupAccounts.reduce((acc, account) => {
+                            const currency = account.currency;
+                            acc[currency] = (acc[currency] || 0) + account.totalBalance;
+                            return acc;
+                        }, {} as Record<string, number>);
 
                         return (
-                            <div
-                                key={account.id}
-                                onClick={() => {
-                                    // Only open sheet on mobile
-                                    if (window.innerWidth < 640) {
-                                        setSelectedAccountForSheet(account);
-                                    }
-                                }}
-                                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md sm:cursor-default cursor-pointer"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div
-                                        className="flex h-12 w-12 items-center justify-center rounded-xl"
-                                        style={{ backgroundColor: `${account.color}20` }}
-                                    >
-                                        <Icon
-                                            className="h-6 w-6"
-                                            style={{ color: account.color }}
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        {account.defaultAccount && (
-                                            <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-                                                Default
+                            <div key={type} className="space-y-3">
+                                <h2 className="text-lg font-semibold text-foreground px-1">{type}</h2>
+                                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                                    {groupAccounts.map((account, index) => {
+                                        const Icon = ICON_MAP[account.icon] || Wallet;
+
+                                        return (
+                                            <div
+                                                key={account.id}
+                                                onClick={() => {
+                                                    // Only open sheet on mobile
+                                                    if (window.innerWidth < 640) {
+                                                        setSelectedAccountForSheet(account);
+                                                    }
+                                                }}
+                                                className={`group relative flex items-center justify-between p-4 transition-all hover:bg-muted/50 sm:cursor-default cursor-pointer ${index !== groupAccounts.length - 1 ? "border-b border-border" : ""
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div
+                                                        className="flex h-12 w-12 items-center justify-center rounded-xl"
+                                                        style={{ backgroundColor: `${account.color}15` }}
+                                                    >
+                                                        <Icon
+                                                            className="h-6 w-6"
+                                                            style={{ color: account.color }}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <h3 className="font-medium text-foreground">
+                                                                {searchQuery.trim()
+                                                                    ? highlightText(account.name, searchQuery)
+                                                                    : account.name}
+                                                            </h3>
+                                                            {account.defaultAccount && (
+                                                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary uppercase tracking-wide">
+                                                                    Default
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm font-medium text-primary">
+                                                            {formatCurrency(account.totalBalance, account.currency)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    {/* Desktop Actions */}
+                                                    <div className="hidden sm:flex">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <span className="sr-only">Open menu</span>
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                                <DropdownMenuItem
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleShowTransactions(account);
+                                                                    }}
+                                                                >
+                                                                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                                                    Transactions
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setEditingAccount(account);
+                                                                    }}
+                                                                >
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive focus:text-destructive"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setDeletingAccount({ id: account.id, name: account.name });
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+
+                                                    {/* Mobile Chevron */}
+                                                    <ChevronRight className="h-5 w-5 text-muted-foreground/50 sm:hidden" />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {/* Group Totals */}
+                                <div className="px-4 pb-2">
+                                    {Object.entries(totalsByCurrency).map(([currency, total]) => (
+                                        <div key={currency} className="flex items-center gap-2 text-sm font-medium">
+                                            <span className="text-muted-foreground">Sum:</span>
+                                            <span
+                                                className={
+                                                    total >= 0 ? "text-emerald-500" : "text-red-500"
+                                                }
+                                            >
+                                                {formatCurrency(total, currency)}
                                             </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 space-y-1">
-                                    <h3 className="text-lg font-semibold text-foreground">
-                                        {searchQuery.trim()
-                                            ? highlightText(account.name, searchQuery)
-                                            : account.name}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                                        {searchQuery.trim()
-                                            ? highlightText(typeLabel, searchQuery)
-                                            : typeLabel}
-                                    </p>
-                                </div>
-
-                                <div className="mt-4 space-y-2">
-                                    <div className="flex items-baseline justify-between">
-                                        <span className="text-xs font-medium text-muted-foreground">
-                                            Balance
-                                        </span>
-                                        <span className="text-xl font-bold text-foreground">
-                                            {formatCurrency(account.totalBalance, account.currency)}
-                                        </span>
-                                    </div>
-
-                                    {account.notes && (
-                                        <p className="text-xs text-muted-foreground line-clamp-2">
-                                            {account.notes}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span className="font-medium uppercase tracking-wider">
-                                        {account.currency}
-                                    </span>
-                                    <span>•</span>
-                                    <span>
-                                        Created {new Date(account.createdAt).toLocaleDateString()}
-                                    </span>
-                                </div>
-
-                                {/* Action buttons - Hidden on mobile, visible on desktop */}
-                                <div className="mt-4 hidden sm:flex justify-end">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 p-0"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <span className="sr-only">Open menu</span>
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenuItem
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleShowTransactions(account);
-                                                }}
-                                            >
-                                                <ArrowRightLeft className="mr-2 h-4 w-4" />
-                                                Transactions
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEditingAccount(account);
-                                                }}
-                                            >
-                                                <Pencil className="mr-2 h-4 w-4" />
-                                                Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                className="text-destructive focus:text-destructive"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setDeletingAccount({ id: account.id, name: account.name });
-                                                }}
-                                            >
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         );
