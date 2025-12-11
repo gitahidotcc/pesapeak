@@ -42,10 +42,12 @@ export function TransactionsFilterDialog({
   trigger,
 }: TransactionsFilterDialogProps) {
   const [open, setOpen] = useState(false);
+  type PeriodTab = "month" | "year";
+  const [activeTab, setActiveTab] = useState<PeriodTab>(
+    periodFilter.type === "year" ? "year" : "month"
+  );
 
   const { data: periodsData, status: periodsStatus } = api.transactions.periods.useQuery();
-
-  const hasActiveFilters = periodFilter.type !== "all" || selectedAccountId !== null;
 
   const currency = accounts?.[0]?.currency ?? "USD";
   const now = new Date();
@@ -111,6 +113,44 @@ export function TransactionsFilterDialog({
     return map;
   }, [normalizedMonthSummaries]);
 
+  type YearSummary = {
+    year: number;
+    transactionCount: number;
+    income: number;
+    expenses: number;
+    netAmount: number;
+  };
+
+  const yearSummaries = useMemo<YearSummary[]>(() => {
+    if (normalizedMonthSummaries.length === 0) return [];
+
+    const map: Record<number, YearSummary> = {};
+
+    normalizedMonthSummaries.forEach((month) => {
+      if (!map[month.year]) {
+        map[month.year] = {
+          year: month.year,
+          transactionCount: 0,
+          income: 0,
+          expenses: 0,
+          netAmount: 0,
+        };
+      }
+
+      const summary = map[month.year];
+      summary.transactionCount += month.transactionCount;
+      summary.income += month.income;
+      summary.expenses += month.expenses;
+    });
+
+    return Object.values(map)
+      .map((summary) => ({
+        ...summary,
+        netAmount: summary.income - summary.expenses,
+      }))
+      .sort((a, b) => b.year - a.year);
+  }, [normalizedMonthSummaries]);
+
   const formatAmount = (amount: number) => {
     try {
       return new Intl.NumberFormat(undefined, {
@@ -121,16 +161,6 @@ export function TransactionsFilterDialog({
     } catch {
       return `${currency} ${(amount / 100).toFixed(2)}`;
     }
-  };
-
-  const handleClearAll = () => {
-    const nowDate = new Date();
-    onPeriodFilterChange({
-      type: "month",
-      month: nowDate.getMonth(),
-      year: nowDate.getFullYear(),
-    });
-    onAccountChange(null);
   };
 
   const handleMonthSelect = (year: number, month: number) => {
@@ -148,6 +178,9 @@ export function TransactionsFilterDialog({
 
     return parts.join(" • ");
   };
+
+  const isLoading = periodsStatus === "pending";
+  const hasMonthData = normalizedMonthSummaries.length > 0;
 
   return (
     <Dialog
@@ -172,108 +205,180 @@ export function TransactionsFilterDialog({
       </DialogTrigger>
       <DialogContent className="max-w-2xl h-[80vh] max-h-[85vh] overflow-hidden rounded-[24px] border border-border/60 bg-background/95 shadow-xl sm:h-[75vh]">
         <div className="flex h-full flex-col gap-4">
-          <DialogHeader className="space-y-1">
-            <div className="flex items-center justify-between gap-4">
-              <DialogTitle className="text-lg font-semibold tracking-tight">
-                Filter Transactions
-              </DialogTitle>
-              <Button
+          <DialogHeader className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  handleClearAll();
-                  setOpen(false);
-                }}
-                disabled={!hasActiveFilters}
+                onClick={() => setOpen(false)}
+                className="text-sm font-medium text-primary hover:underline"
               >
-                Clear all
-              </Button>
+                Cancel
+              </button>
+              <DialogTitle className="text-sm font-semibold tracking-tight">
+                Period
+              </DialogTitle>
+              {/* spacer to balance the Cancel text */}
+              <div className="w-[56px]" />
             </div>
-            <p className="text-sm text-muted-foreground">{getFilterSummary()}</p>
           </DialogHeader>
 
           <div className="flex flex-1 flex-col gap-3 overflow-hidden">
-            <div className="flex items-center justify-between px-1">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-sm font-semibold text-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>Month</span>
-              </div>
-                <div className="text-xs text-muted-foreground">Choose a month</div>
+            <div className="inline-flex w-full rounded-2xl border border-border/60 bg-muted/40 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("month")}
+                className={cn(
+                  "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
+                  activeTab === "month"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>Month</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("year")}
+                className={cn(
+                  "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
+                  activeTab === "year"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span>Year</span>
+              </button>
             </div>
 
             <div className="flex-1 overflow-hidden rounded-2xl border border-border/70 bg-background/80 p-1">
               <div className="h-full overflow-y-auto">
-                {periodsStatus === "pending" ? (
+                {isLoading && (
                   <div className="py-10 text-center text-sm text-muted-foreground">
                     Loading months...
                   </div>
-                ) : Object.keys(monthsByYear).length === 0 ? (
+                )}
+
+                {!isLoading && !hasMonthData && (
                   <div className="py-10 text-center text-sm text-muted-foreground">
                     No transactions found
                   </div>
-                ) : (
-                  Object.keys(monthsByYear)
-                    .map(Number)
-                    .sort((a, b) => b - a)
-                    .map((year) => (
-                      <div key={year} className="pb-3">
-                        <div className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          {year}
-                        </div>
-                        <div className="mt-2 space-y-2">
-                          {monthsByYear[year]?.map((summary) => {
-                            const isSelected =
-                              periodFilter.type === "month" &&
-                              periodFilter.year === summary.year &&
-                              periodFilter.month === summary.month;
-                            const isCurrent =
-                              summary.year === currentYear && summary.month === currentMonth;
-                            const amountPill =
-                              summary.netAmount >= 0
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : "bg-rose-500/15 text-rose-600 dark:text-rose-400";
-                            const amountLabel = formatAmount(summary.netAmount);
-                            return (
-                              <button
-                                key={`${summary.year}-${summary.month}`}
-                                type="button"
-                                onClick={() => handleMonthSelect(summary.year, summary.month)}
-                                className={cn(
-                                  "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
-                                  isSelected
-                                    ? "border-primary bg-primary/5 text-primary"
-                                    : "border-border bg-card hover:bg-muted"
-                                )}
-                              >
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-base font-semibold">
-                                    {isCurrent
-                                      ? "Current Month"
-                                      : `${monthNames[summary.month]} ${summary.year}`}
-                                  </span>
-                                  <span className="text-sm text-muted-foreground">
-                                    {summary.transactionCount}{" "}
-                                    {summary.transactionCount === 1
-                                      ? "transaction"
-                                      : "transactions"}
-                                  </span>
-                                </div>
-                                <span
+                )}
+
+                {!isLoading && hasMonthData && activeTab === "month" && (
+                  <>
+                    {Object.keys(monthsByYear)
+                      .map(Number)
+                      .sort((a, b) => b - a)
+                      .map((year) => (
+                        <div key={year} className="pb-3">
+                          <div className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            {year}
+                          </div>
+                          <div className="mt-2 space-y-2">
+                            {monthsByYear[year]?.map((summary) => {
+                              const isSelected =
+                                periodFilter.type === "month" &&
+                                periodFilter.year === summary.year &&
+                                periodFilter.month === summary.month;
+                              const isCurrent =
+                                summary.year === currentYear && summary.month === currentMonth;
+                              const amountPill =
+                                summary.netAmount >= 0
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400";
+                              const amountLabel = formatAmount(summary.netAmount);
+
+                              return (
+                                <button
+                                  key={`${summary.year}-${summary.month}`}
+                                  type="button"
+                                  onClick={() => handleMonthSelect(summary.year, summary.month)}
                                   className={cn(
-                                    "rounded-full px-3 py-1 text-sm font-semibold",
-                                    amountPill
+                                    "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
+                                    isSelected
+                                      ? "border-primary bg-primary/5 text-primary"
+                                      : "border-border bg-card hover:bg-muted"
                                   )}
                                 >
-                                  {amountLabel}
-                                </span>
-                              </button>
-                            );
-                          })}
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-base font-semibold">
+                                      {isCurrent
+                                        ? "Current Month"
+                                        : `${monthNames[summary.month]} ${summary.year}`}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {summary.transactionCount}{" "}
+                                      {summary.transactionCount === 1
+                                        ? "transaction"
+                                        : "transactions"}
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={cn(
+                                      "rounded-full px-3 py-1 text-sm font-semibold",
+                                      amountPill
+                                    )}
+                                  >
+                                    {amountLabel}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                  </>
+                )}
+
+                {!isLoading && hasMonthData && activeTab === "year" && (
+                  <div className="space-y-2 p-2">
+                    {yearSummaries.map((summary) => {
+                      const isSelected =
+                        periodFilter.type === "year" && periodFilter.year === summary.year;
+                      const amountPill =
+                        summary.netAmount >= 0
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          : "bg-rose-500/15 text-rose-600 dark:text-rose-400";
+                      const amountLabel = formatAmount(summary.netAmount);
+
+                      return (
+                        <button
+                          key={summary.year}
+                          type="button"
+                          onClick={() => {
+                            onPeriodFilterChange({ type: "year", year: summary.year });
+                            setOpen(false);
+                            setActiveTab("year");
+                          }}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
+                            isSelected
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-border bg-card hover:bg-muted"
+                          )}
+                        >
+                          <div className="flex flex-col gap-1">
+                            <span className="text-base font-semibold">{summary.year}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {summary.transactionCount}{" "}
+                              {summary.transactionCount === 1 ? "transaction" : "transactions"}
+                            </span>
+                          </div>
+                          <span
+                            className={cn(
+                              "rounded-full px-3 py-1 text-sm font-semibold",
+                              amountPill
+                            )}
+                          >
+                            {amountLabel}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
