@@ -13,6 +13,7 @@ import { type PeriodFilter } from "./period-filter-dialog";
 import { TransactionsFilterDialog } from "./transactions-filter-dialog";
 import { TransactionsList } from "./transactions-list";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
   try {
