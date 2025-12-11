@@ -1,13 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Filter, Calendar, Wallet, ChevronDown, Check, type LucideIcon } from "lucide-react";
-import {
-  Banknote,
-  CreditCard,
-  Coins,
-  PiggyBank,
-} from "lucide-react";
+import { useState, useMemo, type ReactNode } from "react";
+import { Filter, Calendar, ChevronDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,14 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  banknote: Banknote,
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  "piggy-bank": PiggyBank,
-  coins: Coins,
-};
+import { api } from "@/lib/trpc";
 
 interface Account {
   id: string;
@@ -43,11 +30,8 @@ interface TransactionsFilterDialogProps {
   selectedAccountId: string | null;
   onAccountChange: (accountId: string | null) => void;
   accounts: Account[];
-  availableMonths: Array<{ year: number; month: number }>;
-  availableYears: number[];
+  trigger?: ReactNode;
 }
-
-type FilterTab = "period" | "account";
 
 export function TransactionsFilterDialog({
   periodFilter,
@@ -55,420 +39,245 @@ export function TransactionsFilterDialog({
   selectedAccountId,
   onAccountChange,
   accounts,
-  availableMonths,
-  availableYears,
+  trigger,
 }: TransactionsFilterDialogProps) {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<FilterTab>("period");
+
+  const { data: periodsData, status: periodsStatus } = api.transactions.periods.useQuery();
 
   const hasActiveFilters = periodFilter.type !== "all" || selectedAccountId !== null;
 
-  const selectedAccount = selectedAccountId
-    ? accounts.find((acc) => acc.id === selectedAccountId)
-    : null;
+  const currency = accounts?.[0]?.currency ?? "USD";
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  type MonthSummary = {
+    year: number;
+    month: number;
+    transactionCount: number;
+    income: number;
+    expenses: number;
+    netAmount: number;
+  };
+
+  const normalizedMonthSummaries = useMemo<MonthSummary[]>(() => {
+    const summaries = (periodsData?.monthSummaries ?? []) as MonthSummary[];
+    if (!summaries || summaries.length === 0) {
+      return [];
+    }
+
+    const sorted = [...summaries].sort((a, b) => {
+      if (a.year !== b.year) {
+        return b.year - a.year;
+      }
+      return b.month - a.month;
+    });
+
+    return sorted;
+  }, [periodsData]);
 
   const monthsByYear = useMemo(() => {
-    const grouped: Record<number, number[]> = {};
-    availableMonths.forEach(({ year, month }) => {
-      if (!grouped[year]) {
-        grouped[year] = [];
-      }
-      if (!grouped[year].includes(month)) {
-        grouped[year].push(month);
-      }
-    });
-    Object.keys(grouped).forEach((year) => {
-      grouped[Number(year)].sort((a, b) => b - a);
-    });
-    return grouped;
-  }, [availableMonths]);
+    const map: Record<number, MonthSummary[]> = {};
 
-  const sortedYears = useMemo(() => {
-    return [...availableYears].sort((a, b) => b - a);
-  }, [availableYears]);
+    normalizedMonthSummaries.forEach((summary) => {
+      if (!map[summary.year]) {
+        map[summary.year] = [];
+      }
+      map[summary.year].push(summary);
+    });
+
+    // Sort months within each year from most recent (Dec) to earliest (Jan)
+    Object.keys(map).forEach((yearKey) => {
+      const year = Number(yearKey);
+      map[year] = map[year].sort((a, b) => b.month - a.month);
+    });
+
+    return map;
+  }, [normalizedMonthSummaries]);
+
+  const formatAmount = (amount: number) => {
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: 2,
+      }).format(amount / 100);
+    } catch {
+      return `${currency} ${(amount / 100).toFixed(2)}`;
+    }
+  };
 
   const handleClearAll = () => {
-    onPeriodFilterChange({ type: "all" });
+    const nowDate = new Date();
+    onPeriodFilterChange({
+      type: "month",
+      month: nowDate.getMonth(),
+      year: nowDate.getFullYear(),
+    });
     onAccountChange(null);
+  };
+
+  const handleMonthSelect = (year: number, month: number) => {
+    onPeriodFilterChange({ type: "month", year, month });
+    setOpen(false);
   };
 
   const getFilterSummary = () => {
     const parts: string[] = [];
-    
+
     if (periodFilter.type === "month" && periodFilter.month !== undefined && periodFilter.year !== undefined) {
       const date = new Date(periodFilter.year, periodFilter.month, 1);
       parts.push(date.toLocaleDateString("en-US", { month: "short", year: "numeric" }));
-    } else if (periodFilter.type === "year" && periodFilter.year !== undefined) {
-      parts.push(periodFilter.year.toString());
-    } else if (periodFilter.type === "range" && periodFilter.startDate && periodFilter.endDate) {
-      const start = new Date(periodFilter.startDate);
-      const end = new Date(periodFilter.endDate);
-      parts.push(`${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
-    } else if (periodFilter.type === "all") {
-      parts.push("All time");
-    }
-
-    if (selectedAccount) {
-      parts.push(selectedAccount.name);
-    } else {
-      parts.push("All accounts");
     }
 
     return parts.join(" • ");
   };
 
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value);
+        if (value) {
+        }
+      }}
+    >
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="flex items-center gap-2 rounded-full border-border/60 bg-background/60 px-4 py-2 text-sm shadow-sm hover:bg-background"
-        >
-          <Filter className="h-4 w-4" />
-          <span className="max-w-[200px] truncate">{getFilterSummary()}</span>
-          <ChevronDown className="h-4 w-4 shrink-0" />
-        </Button>
+        {trigger ?? (
+          <Button
+            variant="outline"
+            className="flex items-center gap-2 rounded-full border-border/60 bg-background/60 px-4 py-2 text-sm shadow-sm hover:bg-background"
+          >
+            <Filter className="h-4 w-4" />
+            <span className="max-w-[200px] truncate">{getFilterSummary()}</span>
+            <ChevronDown className="h-4 w-4 shrink-0" />
+          </Button>
+        )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl rounded-2xl border border-border/60 bg-background/95 shadow-xl">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-4">
-            <DialogTitle className="text-lg font-semibold tracking-tight">
-              Filter Transactions
-            </DialogTitle>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleClearAll}
-              disabled={!hasActiveFilters}
-            >
-              Clear all
-            </Button>
-          </div>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl h-[80vh] max-h-[85vh] overflow-hidden rounded-[24px] border border-border/60 bg-background/95 shadow-xl sm:h-[75vh]">
+        <div className="flex h-full flex-col gap-4">
+          <DialogHeader className="space-y-1">
+            <div className="flex items-center justify-between gap-4">
+              <DialogTitle className="text-lg font-semibold tracking-tight">
+                Filter Transactions
+              </DialogTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  handleClearAll();
+                  setOpen(false);
+                }}
+                disabled={!hasActiveFilters}
+              >
+                Clear all
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">{getFilterSummary()}</p>
+          </DialogHeader>
 
-        <div className="mt-4 space-y-6">
-          {/* Tabs */}
-          <div className="inline-flex w-full rounded-2xl border border-border/60 bg-muted/40 p-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab("period")}
-              className={cn(
-                "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
-                activeTab === "period"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <div className="flex items-center justify-center gap-2">
+          <div className="flex flex-1 flex-col gap-3 overflow-hidden">
+            <div className="flex items-center justify-between px-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-sm font-semibold text-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Period</span>
+                <span>Month</span>
               </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("account")}
-              className={cn(
-                "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
-                activeTab === "account"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Wallet className="h-4 w-4" />
-                <span>Account</span>
-              </div>
-            </button>
-          </div>
+                <div className="text-xs text-muted-foreground">Choose a month</div>
+            </div>
 
-          {/* Period Tab */}
-          {activeTab === "period" && (
-            <div className="space-y-4">
-              <div className="inline-flex w-full rounded-2xl border border-border/60 bg-muted/40 p-1">
-                <button
-                  type="button"
-                  onClick={() => onPeriodFilterChange({ type: "all" })}
-                  className={cn(
-                    "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
-                    periodFilter.type === "all"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  All Time
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const now = new Date();
-                    onPeriodFilterChange({
-                      type: "month",
-                      month: now.getMonth(),
-                      year: now.getFullYear(),
-                    });
-                  }}
-                  className={cn(
-                    "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
-                    periodFilter.type === "month"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Month
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const now = new Date();
-                    onPeriodFilterChange({
-                      type: "year",
-                      year: now.getFullYear(),
-                    });
-                  }}
-                  className={cn(
-                    "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
-                    periodFilter.type === "year"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Year
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (periodFilter.type !== "range") {
-                      const now = new Date();
-                      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                      onPeriodFilterChange({
-                        type: "range",
-                        startDate: startOfMonth.toISOString().split("T")[0],
-                        endDate: endOfMonth.toISOString().split("T")[0],
-                      });
-                    }
-                  }}
-                  className={cn(
-                    "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
-                    periodFilter.type === "range"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Range
-                </button>
-              </div>
-
-              {periodFilter.type === "month" && (
-                <div className="max-h-[400px] space-y-4 overflow-y-auto">
-                  {Object.keys(monthsByYear).length === 0 ? (
-                    <div className="py-8 text-center text-sm text-muted-foreground">
-                      No transactions found
-                    </div>
-                  ) : (
-                    Object.entries(monthsByYear)
-                      .sort((a, b) => Number(b[0]) - Number(a[0]))
-                      .map(([year, months]) => (
-                        <div key={year} className="space-y-2">
-                          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            {year}
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {months.map((month) => {
-                              const isSelected =
-                                periodFilter.type === "month" &&
-                                periodFilter.month === month &&
-                                periodFilter.year === Number(year);
-                              return (
-                                <button
-                                  key={month}
-                                  type="button"
-                                  onClick={() => {
-                                    onPeriodFilterChange({
-                                      type: "month",
-                                      month,
-                                      year: Number(year),
-                                    });
-                                  }}
+            <div className="flex-1 overflow-hidden rounded-2xl border border-border/70 bg-background/80 p-1">
+              <div className="h-full overflow-y-auto">
+                {periodsStatus === "pending" ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">
+                    Loading months...
+                  </div>
+                ) : Object.keys(monthsByYear).length === 0 ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">
+                    No transactions found
+                  </div>
+                ) : (
+                  Object.keys(monthsByYear)
+                    .map(Number)
+                    .sort((a, b) => b - a)
+                    .map((year) => (
+                      <div key={year} className="pb-3">
+                        <div className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {year}
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {monthsByYear[year]?.map((summary) => {
+                            const isSelected =
+                              periodFilter.type === "month" &&
+                              periodFilter.year === summary.year &&
+                              periodFilter.month === summary.month;
+                            const isCurrent =
+                              summary.year === currentYear && summary.month === currentMonth;
+                            const amountPill =
+                              summary.netAmount >= 0
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : "bg-rose-500/15 text-rose-600 dark:text-rose-400";
+                            const amountLabel = formatAmount(summary.netAmount);
+                            return (
+                              <button
+                                key={`${summary.year}-${summary.month}`}
+                                type="button"
+                                onClick={() => handleMonthSelect(summary.year, summary.month)}
+                                className={cn(
+                                  "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
+                                  isSelected
+                                    ? "border-primary bg-primary/5 text-primary"
+                                    : "border-border bg-card hover:bg-muted"
+                                )}
+                              >
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-base font-semibold">
+                                    {isCurrent
+                                      ? "Current Month"
+                                      : `${monthNames[summary.month]} ${summary.year}`}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {summary.transactionCount}{" "}
+                                    {summary.transactionCount === 1
+                                      ? "transaction"
+                                      : "transactions"}
+                                  </span>
+                                </div>
+                                <span
                                   className={cn(
-                                    "rounded-lg border px-3 py-2 text-sm transition-colors",
-                                    isSelected
-                                      ? "border-primary bg-primary/10 text-primary"
-                                      : "border-border bg-background hover:bg-muted"
+                                    "rounded-full px-3 py-1 text-sm font-semibold",
+                                    amountPill
                                   )}
                                 >
-                                  {monthNames[month]}
-                                </button>
-                              );
-                            })}
-                          </div>
+                                  {amountLabel}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
-                      ))
-                  )}
-                </div>
-              )}
-
-              {periodFilter.type === "year" && (
-                <div className="max-h-[400px] space-y-2 overflow-y-auto">
-                  {sortedYears.length === 0 ? (
-                    <div className="py-8 text-center text-sm text-muted-foreground">
-                      No transactions found
-                    </div>
-                  ) : (
-                    sortedYears.map((year) => {
-                      const isSelected = periodFilter.type === "year" && periodFilter.year === year;
-                      return (
-                        <button
-                          key={year}
-                          type="button"
-                          onClick={() => {
-                            onPeriodFilterChange({
-                              type: "year",
-                              year,
-                            });
-                          }}
-                          className={cn(
-                            "w-full rounded-lg border px-4 py-3 text-left transition-colors",
-                            isSelected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background hover:bg-muted"
-                          )}
-                        >
-                          {year}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-
-              {periodFilter.type === "range" && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">
-                      From Date
-                    </label>
-                    <input
-                      type="date"
-                      value={periodFilter.startDate || ""}
-                      onChange={(e) =>
-                        onPeriodFilterChange({
-                          ...periodFilter,
-                          type: "range",
-                          startDate: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-foreground">
-                      To Date
-                    </label>
-                    <input
-                      type="date"
-                      value={periodFilter.endDate || ""}
-                      onChange={(e) =>
-                        onPeriodFilterChange({
-                          ...periodFilter,
-                          type: "range",
-                          endDate: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-border bg-background px-4 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Account Tab */}
-          {activeTab === "account" && (
-            <div className="max-h-[400px] space-y-2 overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => onAccountChange(null)}
-                className={cn(
-                  "w-full rounded-lg border px-4 py-3 text-left transition-colors",
-                  !selectedAccountId
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-background hover:bg-muted"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                    <Wallet className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="flex flex-1 items-center justify-between">
-                    <span className="font-medium">All Accounts</span>
-                    {!selectedAccountId && (
-                      <Check className="h-5 w-5 text-primary" />
-                    )}
-                  </div>
-                </div>
-              </button>
-
-              {accounts.length === 0 ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  No accounts available
-                </div>
-              ) : (
-                accounts.map((account) => {
-                  const AccountIcon = ICON_MAP[account.icon] || Wallet;
-                  const isSelected = selectedAccountId === account.id;
-                  return (
-                    <button
-                      key={account.id}
-                      type="button"
-                      onClick={() => onAccountChange(account.id)}
-                      className={cn(
-                        "w-full rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted",
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-background"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-10 w-10 items-center justify-center rounded-lg"
-                          style={{ backgroundColor: `${account.color}20` }}
-                        >
-                          <AccountIcon
-                            className="h-5 w-5"
-                            style={{ color: account.color }}
-                          />
-                        </div>
-                        <div className="flex flex-1 flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{account.name}</span>
-                            {account.defaultAccount && (
-                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                                Default
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {account.accountType} • {account.currency}
-                          </span>
-                        </div>
-                        {isSelected && (
-                          <Check className="h-5 w-5 text-primary" />
-                        )}
                       </div>
-                    </button>
-                  );
-                })
-              )}
+                    ))
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
