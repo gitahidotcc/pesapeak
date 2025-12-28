@@ -261,7 +261,7 @@ export function TransactionsList({
     }
   };
 
-  if (status === "loading" && transactions.length === 0) {
+  if (status === "pending" && transactions.length === 0) {
     return (
       <div className="py-12 text-center text-muted-foreground">
         Loading transactions...
