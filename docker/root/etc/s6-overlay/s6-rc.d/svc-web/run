@@ -1,0 +1,5 @@
+#!/command/with-contenv sh
+# shellcheck shell=bash
+
+cd /app;
+exec node server.js;

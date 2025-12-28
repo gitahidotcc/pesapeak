@@ -1,0 +1,20 @@
+services:
+  web:
+    image: ghcr.io/gitahidotcc/pesapeak:${PESAPEAK_VERSION:-latest}
+    restart: unless-stopped
+    volumes:
+      # By default, the data is stored in a docker volume called "data".
+      # If you want to mount a custom directory, change the volume mapping to:
+      # - /path/to/your/directory:/data
+      - data:/data
+    ports:
+      - 3000:3000
+    env_file:
+      - .env
+    environment:
+      # You almost never want to change the value of the DATA_DIR variable.
+      # If you want to mount a custom directory, change the volume mapping above instead.
+      DATA_DIR: /data # DON'T CHANGE THIS
+
+volumes:
+  data:

@@ -1,0 +1,39 @@
+version: "3.8"
+services:
+  web:
+    build:
+      dockerfile: docker/Dockerfile.dev
+      context: ..
+    volumes:
+      - data:/data
+      - ..:/app
+    ports:
+      - 3000:3000
+    env_file:
+      - .env  # Automatically load all variables from this file
+    command:
+      - pnpm
+      - web
+    working_dir: /app
+    depends_on:
+      prep:
+        condition: service_completed_successfully
+  prep:
+    build:
+      dockerfile: docker/Dockerfile.dev
+      context: ..
+    env_file:
+      - .env
+    working_dir: /app
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - data:/data
+      - ..:/app
+    command:
+     - /bin/sh
+     - -c
+     - "pnpm install --frozen-lockfile && pnpm --filter @pesapeak/db migrate"
+
+volumes:
+  data:
