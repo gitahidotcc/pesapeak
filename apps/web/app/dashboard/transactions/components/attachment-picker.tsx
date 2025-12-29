@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Upload, X, File, Image as ImageIcon, Camera } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Upload, X, File, Camera } from "lucide-react";
 
 interface ExistingAttachment {
   url: string;

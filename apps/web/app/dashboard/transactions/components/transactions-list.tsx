@@ -183,7 +183,6 @@ export function TransactionsList({
     data,
     fetchNextPage,
     hasNextPage,
-    isLoading,
     isFetchingNextPage,
     status,
   } = api.transactions.list.useInfiniteQuery(

@@ -7,7 +7,6 @@ import {
     Hash,
     UserCircle,
     Shield,
-    LogOut,
     Settings,
     ChevronRight,
 } from "lucide-react";

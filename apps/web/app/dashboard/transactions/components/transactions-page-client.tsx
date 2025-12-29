@@ -197,7 +197,7 @@ function TransactionsHeader({ periodLabel, periodTrigger, actionTrigger }: Trans
             label="Search transactions"
             aria-disabled
           />
-          {actionTrigger && actionTrigger}
+          {actionTrigger}
         </div>
       </div>
     </header>
