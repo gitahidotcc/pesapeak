@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { financialAccounts, transactions } from "@pesapeak/db/schema";
 import { authedProcedure, router } from "../index";
@@ -332,6 +332,4 @@ function revertTransaction(currentBalance: number, txn: any, targetAccountId?: s
     }
 }
 
-function or(...args: any[]): any {
-    return sql`(${sql.join(args, sql` OR `)})`;
-}
+// Note: we use the `or` helper from `drizzle-orm` for composable SQL conditions.

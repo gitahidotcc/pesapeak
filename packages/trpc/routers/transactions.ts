@@ -562,47 +562,7 @@ export const transactionsRouter = router({
         throw new Error("Fees are only supported for expense and transfer transactions");
       }
 
-      // Handle updates (this is simplified - in production you'd want to handle balance updates properly)
-      const updateValues: any = {};
-
-      if (updateData.amount !== undefined) {
-        updateValues.amount = Math.round(updateData.amount * 100);
-      }
-      if (updateData.date !== undefined) {
-        // Use UTC to ensure consistent storage regardless of server timezone
-        const [year, month, day] = updateData.date.split("-").map(Number);
-        let dateObj: Date;
-        if (updateData.time) {
-          const [hours, minutes] = updateData.time.split(":").map(Number);
-          dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
-        } else {
-          dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-        }
-        updateValues.date = dateObj;
-      }
-      if (updateData.time !== undefined) {
-        updateValues.time = updateData.time;
-      }
-      if (updateData.notes !== undefined) {
-        updateValues.notes = updateData.notes;
-      }
-      if (updateData.type !== undefined) {
-        updateValues.type = updateData.type;
-      }
-      if (updateData.accountId !== undefined) {
-        updateValues.accountId = updateData.accountId;
-      }
-      if (updateData.categoryId !== undefined) {
-        updateValues.categoryId = updateData.categoryId;
-      }
-      if (updateData.fromAccountId !== undefined) {
-        updateValues.fromAccountId = updateData.fromAccountId;
-      }
-      if (updateData.toAccountId !== undefined) {
-        updateValues.toAccountId = updateData.toAccountId;
-      }
-
-      // Handle attachment
+      // Handle attachment outside transaction (file system operation)
       if (updateData.attachment) {
         // Delete old attachment if it exists and has a different path
         if (existing.attachmentPath) {
@@ -613,51 +573,12 @@ export const transactionsRouter = router({
             console.warn("Failed to delete old attachment:", error);
           }
         }
-        
-        const saved = await saveAttachment(ctx.user.id, id, updateData.attachment);
-        updateValues.attachmentPath = saved.path;
-        updateValues.attachmentFileName = saved.fileName;
-        updateValues.attachmentMimeType = saved.mimeType;
       }
 
-      const [updated] = await ctx.db
-        .update(transactions)
-        .set(updateValues)
-        .where(and(eq(transactions.id, id), eq(transactions.userId, ctx.user.id)))
-        .returning();
-
-      if (!updated) {
-        throw new Error("Failed to update transaction");
-      }
-
-      // Handle fee update in a simplified way: create or update linked fee transaction if provided
-      if (input.fee) {
-        const feeAmountInCents = Math.round(input.fee.amount * 100);
-
-        const sourceAccountId =
-          (updated.type === "transfer" ? updated.fromAccountId : updated.accountId) ??
-          existing.accountId ??
-          existing.fromAccountId;
-
-        const feeAccountId = input.fee.accountId ?? sourceAccountId;
-
-        let feeCategoryId = input.fee.categoryId ?? null;
-        if (!feeCategoryId) {
-          const userCategories = await ctx.db.query.categories.findMany({
-            where: eq(categories.userId, ctx.user.id),
-          });
-          const feeCategory = userCategories.find((cat) => {
-            const name = cat.name.toLowerCase();
-            return (
-              name === "bank fees" ||
-              name === "transaction fees" ||
-              name === "fees"
-            );
-          });
-          feeCategoryId = feeCategory?.id ?? null;
-        }
-
-        const existingFee = await ctx.db.query.transactions.findFirst({
+      // Wrap all database operations in a transaction for atomicity
+      const updated = await ctx.db.transaction(async (tx) => {
+        // Load any existing linked fee transactions so we can reverse their balance impact
+        const existingFees = await tx.query.transactions.findMany({
           where: and(
             eq(transactions.parentTransactionId, id),
             eq(transactions.userId, ctx.user.id),
@@ -665,36 +586,221 @@ export const transactionsRouter = router({
           ),
         });
 
-        if (existingFee) {
-          await ctx.db
-            .update(transactions)
-            .set({
+        const originalTransactions = [existing, ...existingFees];
+
+        // Reverse original balance effects for the main transaction and any linked fee transactions
+        for (const txRecord of originalTransactions) {
+          if (txRecord.type === "income" && txRecord.accountId) {
+            await tx
+              .update(financialAccounts)
+              .set({
+                totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+              })
+              .where(eq(financialAccounts.id, txRecord.accountId));
+          } else if (txRecord.type === "expense" && txRecord.accountId) {
+            await tx
+              .update(financialAccounts)
+              .set({
+                totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+              })
+              .where(eq(financialAccounts.id, txRecord.accountId));
+          } else if (txRecord.type === "transfer") {
+            if (txRecord.fromAccountId) {
+              await tx
+                .update(financialAccounts)
+                .set({
+                  totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+                })
+                .where(eq(financialAccounts.id, txRecord.fromAccountId));
+            }
+
+            if (txRecord.toAccountId) {
+              await tx
+                .update(financialAccounts)
+                .set({
+                  totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+                })
+                .where(eq(financialAccounts.id, txRecord.toAccountId));
+            }
+          }
+        }
+
+        // Handle field updates
+        const updateValues: any = {};
+
+        if (updateData.amount !== undefined) {
+          updateValues.amount = Math.round(updateData.amount * 100);
+        }
+        if (updateData.date !== undefined) {
+          // Use UTC to ensure consistent storage regardless of server timezone
+          const [year, month, day] = updateData.date.split("-").map(Number);
+          let dateObj: Date;
+          if (updateData.time) {
+            const [hours, minutes] = updateData.time.split(":").map(Number);
+            dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+          } else {
+            dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+          }
+          updateValues.date = dateObj;
+        }
+        if (updateData.time !== undefined) {
+          updateValues.time = updateData.time;
+        }
+        if (updateData.notes !== undefined) {
+          updateValues.notes = updateData.notes;
+        }
+        if (updateData.type !== undefined) {
+          updateValues.type = updateData.type;
+        }
+        if (updateData.accountId !== undefined) {
+          updateValues.accountId = updateData.accountId;
+        }
+        if (updateData.categoryId !== undefined) {
+          updateValues.categoryId = updateData.categoryId;
+        }
+        if (updateData.fromAccountId !== undefined) {
+          updateValues.fromAccountId = updateData.fromAccountId;
+        }
+        if (updateData.toAccountId !== undefined) {
+          updateValues.toAccountId = updateData.toAccountId;
+        }
+
+        // Handle attachment path if provided
+        if (updateData.attachment) {
+          const saved = await saveAttachment(ctx.user.id, id, updateData.attachment);
+          updateValues.attachmentPath = saved.path;
+          updateValues.attachmentFileName = saved.fileName;
+          updateValues.attachmentMimeType = saved.mimeType;
+        }
+
+        const [updatedTx] = await tx
+          .update(transactions)
+          .set(updateValues)
+          .where(and(eq(transactions.id, id), eq(transactions.userId, ctx.user.id)))
+          .returning();
+
+        if (!updatedTx) {
+          throw new Error("Failed to update transaction");
+        }
+
+        // Handle fee update: create/update/delete linked fee transaction and re-apply its balance effect
+        if (input.fee) {
+          const feeAmountInCents = Math.round(input.fee.amount * 100);
+
+          const sourceAccountId =
+            (updatedTx.type === "transfer" ? updatedTx.fromAccountId : updatedTx.accountId) ??
+            existing.accountId ??
+            existing.fromAccountId;
+
+          const feeAccountId = input.fee.accountId ?? sourceAccountId;
+
+          let feeCategoryId = input.fee.categoryId ?? null;
+          if (!feeCategoryId) {
+            const userCategories = await tx.query.categories.findMany({
+              where: eq(categories.userId, ctx.user.id),
+            });
+            const feeCategory = userCategories.find((cat) => {
+              const name = cat.name.toLowerCase();
+              return (
+                name === "bank fees" ||
+                name === "transaction fees" ||
+                name === "fees"
+              );
+            });
+            feeCategoryId = feeCategory?.id ?? null;
+          }
+
+          const existingFee = existingFees[0];
+
+          if (existingFee) {
+            await tx
+              .update(transactions)
+              .set({
+                amount: feeAmountInCents,
+                accountId: feeAccountId,
+                categoryId: feeCategoryId,
+              })
+              .where(eq(transactions.id, existingFee.id));
+          } else {
+            await tx.insert(transactions).values({
+              id: createId(),
+              userId: ctx.user.id,
+              type: "expense",
               amount: feeAmountInCents,
               accountId: feeAccountId,
               categoryId: feeCategoryId,
-            })
-            .where(eq(transactions.id, existingFee.id));
-        } else {
-          await ctx.db.insert(transactions).values({
-            id: createId(),
-            userId: ctx.user.id,
-            type: "expense",
-            amount: feeAmountInCents,
-            accountId: feeAccountId,
-            categoryId: feeCategoryId,
-            fromAccountId: null,
-            toAccountId: null,
-            date: updated.date,
-            time: updated.time,
-            notes: updated.notes ? `Fee: ${updated.notes}` : "Transaction fee",
-            attachmentPath: null,
-            attachmentFileName: null,
-            attachmentMimeType: null,
-            parentTransactionId: updated.id,
-            isFee: true,
-          });
+              fromAccountId: null,
+              toAccountId: null,
+              date: updatedTx.date,
+              time: updatedTx.time,
+              notes: updatedTx.notes ? `Fee: ${updatedTx.notes}` : "Transaction fee",
+              attachmentPath: null,
+              attachmentFileName: null,
+              attachmentMimeType: null,
+              parentTransactionId: updatedTx.id,
+              isFee: true,
+            });
+          }
+
+          // Apply new fee balance effect (expense from fee account)
+          if (feeAccountId) {
+            await tx
+              .update(financialAccounts)
+              .set({
+                totalBalance: sql`${financialAccounts.totalBalance} - ${feeAmountInCents}`,
+              })
+              .where(eq(financialAccounts.id, feeAccountId));
+          }
+        } else if (!input.fee && existingFees.length > 0) {
+          // Fee removed: delete existing fee transactions (their balance effect was already reversed)
+          await tx
+            .delete(transactions)
+            .where(
+              and(
+                eq(transactions.userId, ctx.user.id),
+                eq(transactions.parentTransactionId, id),
+                eq(transactions.isFee, true)
+              )
+            );
         }
-      }
+
+        // Apply new balance effects for the updated main transaction
+        if (updatedTx.type === "income" && updatedTx.accountId) {
+          await tx
+            .update(financialAccounts)
+            .set({
+              totalBalance: sql`${financialAccounts.totalBalance} + ${updatedTx.amount}`,
+            })
+            .where(eq(financialAccounts.id, updatedTx.accountId));
+        } else if (updatedTx.type === "expense" && updatedTx.accountId) {
+          await tx
+            .update(financialAccounts)
+            .set({
+              totalBalance: sql`${financialAccounts.totalBalance} - ${updatedTx.amount}`,
+            })
+            .where(eq(financialAccounts.id, updatedTx.accountId));
+        } else if (updatedTx.type === "transfer") {
+          if (updatedTx.fromAccountId) {
+            await tx
+              .update(financialAccounts)
+              .set({
+                totalBalance: sql`${financialAccounts.totalBalance} - ${updatedTx.amount}`,
+              })
+              .where(eq(financialAccounts.id, updatedTx.fromAccountId));
+          }
+
+          if (updatedTx.toAccountId) {
+            await tx
+              .update(financialAccounts)
+              .set({
+                totalBalance: sql`${financialAccounts.totalBalance} + ${updatedTx.amount}`,
+              })
+              .where(eq(financialAccounts.id, updatedTx.toAccountId));
+          }
+        }
+
+        return updatedTx;
+      });
 
       // Fetch category data if categoryId exists
       let categoryIcon: string | null = null;
@@ -745,7 +851,18 @@ export const transactionsRouter = router({
         throw new Error("Transaction not found");
       }
 
-      // Delete attachment if exists
+      // Load any linked fee transactions
+      const linkedFees = await ctx.db.query.transactions.findMany({
+        where: and(
+          eq(transactions.parentTransactionId, existing.id),
+          eq(transactions.userId, ctx.user.id),
+          eq(transactions.isFee, true)
+        ),
+      });
+
+      const allTransactionsToReverse = [existing, ...linkedFees];
+
+      // Delete attachments if they exist (file system operation, outside transaction)
       if (existing.attachmentPath) {
         try {
           await fs.unlink(existing.attachmentPath);
@@ -754,14 +871,66 @@ export const transactionsRouter = router({
         }
       }
 
-      // Delete transaction
-      await ctx.db
-        .delete(transactions)
-        .where(and(eq(transactions.id, input.id), eq(transactions.userId, ctx.user.id)));
+      for (const feeTx of linkedFees) {
+        if (feeTx.attachmentPath) {
+          try {
+            await fs.unlink(feeTx.attachmentPath);
+          } catch {
+            // Ignore errors if file doesn't exist
+          }
+        }
+      }
 
-      // TODO: Update account balances (reverse the transaction)
+      // Wrap all database operations in a transaction for atomicity
+      await ctx.db.transaction(async (tx) => {
+        // Reverse account balance effects for the transaction and any linked fees
+        for (const txRecord of allTransactionsToReverse) {
+          if (txRecord.type === "income" && txRecord.accountId) {
+            await tx
+              .update(financialAccounts)
+              .set({
+                totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+              })
+              .where(eq(financialAccounts.id, txRecord.accountId));
+          } else if (txRecord.type === "expense" && txRecord.accountId) {
+            await tx
+              .update(financialAccounts)
+              .set({
+                totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+              })
+              .where(eq(financialAccounts.id, txRecord.accountId));
+          } else if (txRecord.type === "transfer") {
+            if (txRecord.fromAccountId) {
+              await tx
+                .update(financialAccounts)
+                .set({
+                  totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+                })
+                .where(eq(financialAccounts.id, txRecord.fromAccountId));
+            }
+
+            if (txRecord.toAccountId) {
+              await tx
+                .update(financialAccounts)
+                .set({
+                  totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+                })
+                .where(eq(financialAccounts.id, txRecord.toAccountId));
+            }
+          }
+        }
+
+        // Delete transaction and any linked fee transactions
+        await tx
+          .delete(transactions)
+          .where(
+            and(
+              eq(transactions.userId, ctx.user.id),
+              or(eq(transactions.id, input.id), eq(transactions.parentTransactionId, input.id))
+            )
+          );
+      });
 
       return { success: true };
     }),
 });
-
