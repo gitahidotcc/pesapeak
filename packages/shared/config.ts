@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import crypto from "crypto";
 import path from "path";
 import { z } from "zod";
 

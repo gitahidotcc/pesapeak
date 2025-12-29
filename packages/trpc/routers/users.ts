@@ -4,7 +4,9 @@ import { count } from "drizzle-orm";
 import { users } from "@pesapeak/db/schema";
 import serverConfig from "@pesapeak/shared/config";
 import {
+  zUpdateUserProfileSchema,
   zUpdateUserSettingsSchema,
+  zUserProfileSchema,
   zUserSettingsSchema,
   zWhoAmIResponseSchema,
 } from "@pesapeak/shared/types/users";
@@ -56,6 +58,18 @@ export const usersAppRouter = router({
     .mutation(async ({ input, ctx }) => {
       const user = await User.fromCtx(ctx);
       await user.updateSettings(input);
+    }),
+  profile: authedProcedure
+    .output(zUserProfileSchema)
+    .query(async ({ ctx }) => {
+      const user = await User.fromCtx(ctx);
+      return await user.getProfile();
+    }),
+  updateProfile: authedProcedure
+    .input(zUpdateUserProfileSchema)
+    .mutation(async ({ input, ctx }) => {
+      const user = await User.fromCtx(ctx);
+      await user.updateProfile(input);
     }),
   verifyEmail: publicProcedure
     .use(

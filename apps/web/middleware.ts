@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check if user is trying to access protected routes
-  if (request.nextUrl.pathname.startsWith("/dashboard")) {
+  if (request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/onboarding")) {
     if (!sessionCookie) {
       return NextResponse.redirect(new URL("/auth/sign-in", request.url));
     }
@@ -32,6 +32,7 @@ export const config = {
   matcher: [
     "/",
     "/dashboard/:path*",
+    "/onboarding/:path*",
     "/auth/:path*",
   ],
 };

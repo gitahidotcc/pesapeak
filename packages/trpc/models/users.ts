@@ -13,6 +13,8 @@ import serverConfig from "@pesapeak/shared/config";
 import {
   zSignUpSchema,
   zUpdateUserSettingsSchema,
+  zUserProfileSchema,
+  zUpdateUserProfileSchema,
   zUserSettingsSchema,
   zWhoAmIResponseSchema,
 } from "@pesapeak/shared/types/users";
@@ -317,6 +319,72 @@ export class User implements PrivacyAware {
         timezone: input.timezone,
       })
       .where(eq(users.id, this.user.id));
+  }
+
+  async getProfile(): Promise<z.infer<typeof zUserProfileSchema>> {
+    const profile = await this.ctx.db.query.users.findFirst({
+      where: eq(users.id, this.user.id),
+      columns: {
+        id: true,
+        name: true,
+        email: true,
+        timezone: true,
+        language: true,
+      },
+    });
+
+    if (!profile) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "User profile not found",
+      });
+    }
+
+    return {
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      timezone: profile.timezone ?? "UTC",
+      language: profile.language ?? "en",
+    };
+  }
+
+  async updateProfile(input: z.infer<typeof zUpdateUserProfileSchema>): Promise<void> {
+    const updates: Partial<typeof users.$inferInsert> = {};
+    if (input.name) {
+      updates.name = input.name;
+    }
+    if (input.email) {
+      updates.email = input.email;
+    }
+    if (input.timezone) {
+      updates.timezone = input.timezone;
+    }
+    if (input.language) {
+      updates.language = input.language;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No profile fields were provided",
+      });
+    }
+
+    try {
+      await this.ctx.db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, this.user.id));
+    } catch (error) {
+      if (error instanceof SqliteError && error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Email is already taken",
+        });
+      }
+      throw error;
+    }
   }
 
 

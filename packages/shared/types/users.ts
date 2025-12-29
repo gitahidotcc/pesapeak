@@ -50,3 +50,23 @@ export const zUpdateUserSettingsSchema = zUserSettingsSchema.partial().pick({
 });
 
 export type ZChangePassword = z.infer<typeof zChangePasswordSchema>;
+
+export const zUserProfileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+  timezone: z.string(),
+  language: z.string(),
+});
+
+export const zUpdateUserProfileSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    email: z.string().email().optional(),
+    timezone: z.string().optional(),
+    language: z.string().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+    path: [],
+  });
