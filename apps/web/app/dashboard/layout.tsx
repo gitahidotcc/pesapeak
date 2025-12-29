@@ -14,7 +14,11 @@ export default async function DashboardLayout({
         headers: await headers(),
     });
 
-    if (!session?.user?.isOnboarded) {
+    if (!session) {
+        redirect("/auth/sign-in");
+    }
+
+    if (!session.user?.isOnboarded) {
         redirect("/onboarding");
     }
 

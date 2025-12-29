@@ -29,9 +29,13 @@ const formatCurrency = (amount: number, currency: string = "USD") => {
 
 interface TransactionsPageClientProps {
   initialAccountId?: string | null;
+  initialCategoryId?: string | null;
 }
 
-export function TransactionsPageClient({ initialAccountId = null }: TransactionsPageClientProps) {
+export function TransactionsPageClient({ 
+  initialAccountId = null,
+  initialCategoryId = null 
+}: TransactionsPageClientProps) {
   // Default to current month
   const now = new Date();
   const [filter, setFilter] = useState<PeriodFilter>({
@@ -40,6 +44,7 @@ export function TransactionsPageClient({ initialAccountId = null }: Transactions
     year: now.getFullYear(),
   });
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(initialAccountId);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(initialCategoryId);
 
   const { data: accounts } = api.accounts.list.useQuery();
 
@@ -146,7 +151,11 @@ export function TransactionsPageClient({ initialAccountId = null }: Transactions
         periodLabel={summaryPresenters.periodLabel}
       />
 
-      <TransactionsList filter={filter} selectedAccountId={selectedAccountId} />
+      <TransactionsList 
+        filter={filter} 
+        selectedAccountId={selectedAccountId}
+        selectedCategoryId={selectedCategoryId}
+      />
     </div>
   );
 }
@@ -268,7 +277,7 @@ function SummaryHero({
           <div>
             <p className="text-sm uppercase tracking-wide text-white/80">Net for {periodLabel}</p>
             <p className="mt-3 text-4xl font-semibold">
-              {netPositive ? "+" : netAmount < 0 ? "−" : ""}
+              {netAmount > 0 ? "+" : netAmount < 0 ? "−" : ""}
               {formatCurrency(Math.abs(netAmount), currency)}
             </p>
             <p className="mt-2 text-sm text-white/75">{netLabel}</p>

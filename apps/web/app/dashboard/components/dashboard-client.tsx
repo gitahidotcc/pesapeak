@@ -69,10 +69,13 @@ export function DashboardClient() {
     };
 
     const periodLabel = useMemo(() => {
-        if (filter.type === 'month' && filter.month !== undefined) {
-            return new Date(filter.year!, filter.month!).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
+            return new Date(filter.year, filter.month).toLocaleDateString(undefined, {
+                month: "long",
+                year: "numeric",
+            });
         }
-        return 'Selected Period';
+        return "Selected Period";
     }, [filter]);
 
     // Calculations for summary cards
