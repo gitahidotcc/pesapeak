@@ -2,7 +2,7 @@
 FROM node:22-alpine AS base
 
 WORKDIR /app
-ENV PNPM_HOME="/pnpm"
+ENV PNPM_HOME=/pnpm
 ENV PATH="$PNPM_HOME:$PATH"
 
 # Enable pnpm via corepack
@@ -23,7 +23,7 @@ COPY tooling/prettier/package.json ./tooling/prettier/
 COPY tooling/tailwind/package.json ./tooling/tailwind/
 COPY tooling/typescript/package.json ./tooling/typescript/
 
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN pnpm install --frozen-lockfile
 
@@ -51,8 +51,8 @@ WORKDIR /app
 ARG SERVER_VERSION=nightly
 ENV SERVER_VERSION=${SERVER_VERSION}
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 EXPOSE 3000
 
 ######################
@@ -84,8 +84,8 @@ RUN apk add --no-cache wget
 # Prepare the web app
 ######################
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy standalone Next.js build output
 COPY --from=base --chown=node:node /app/apps/web/.next/standalone ./
