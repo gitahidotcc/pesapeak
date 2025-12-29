@@ -542,6 +542,7 @@ export const transactionsRouter = router({
             data: z.string(),
           })
           .optional(),
+        removeAttachment: z.boolean().optional(),
       })
     )
     .output(transactionOutputSchema)
@@ -563,8 +564,8 @@ export const transactionsRouter = router({
       }
 
       // Handle attachment outside transaction (file system operation)
-      if (updateData.attachment) {
-        // Delete old attachment if it exists and has a different path
+      if (updateData.attachment || updateData.removeAttachment) {
+        // Delete old attachment file if it exists
         if (existing.attachmentPath) {
           try {
             await fs.unlink(existing.attachmentPath);
@@ -665,12 +666,17 @@ export const transactionsRouter = router({
           updateValues.toAccountId = updateData.toAccountId;
         }
 
-        // Handle attachment path if provided
+        // Handle attachment path if provided or removed
         if (updateData.attachment) {
           const saved = await saveAttachment(ctx.user.id, id, updateData.attachment);
           updateValues.attachmentPath = saved.path;
           updateValues.attachmentFileName = saved.fileName;
           updateValues.attachmentMimeType = saved.mimeType;
+        } else if (updateData.removeAttachment) {
+          // Clear attachment metadata in DB when explicitly removing attachment
+          updateValues.attachmentPath = null;
+          updateValues.attachmentFileName = null;
+          updateValues.attachmentMimeType = null;
         }
 
         const [updatedTx] = await tx
