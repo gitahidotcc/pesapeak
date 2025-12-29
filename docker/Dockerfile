@@ -34,8 +34,12 @@ RUN cd packages/db && \
     pnpm exec ncc build migrate.ts -o /db_migrations && \
     cp -R drizzle /db_migrations/drizzle
 
+# Create empty .env file (Next.js checks for it)
+RUN touch apps/web/.env
+
 # Build the web app with standalone output
-RUN (cd apps/web && pnpm exec next build)
+# Use --experimental-build-mode compile to skip page data collection (avoids DB access during build)
+RUN (cd apps/web && pnpm exec next build --experimental-build-mode compile)
 
 
 ################# The All-in-one builder ##############
@@ -83,34 +87,28 @@ RUN apk add --no-cache wget
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Copy standalone Next.js build output
 COPY --from=base --chown=node:node /app/apps/web/.next/standalone ./
-COPY --from=base /app/apps/web/public ./apps/web/public
+COPY --from=base --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=base --chown=node:node /app/apps/web/public ./apps/web/public
 COPY --from=base /db_migrations /db_migrations
 
 # Set the correct permission for prerender cache
 RUN mkdir -p ./apps/web/.next && chown node:node ./apps/web/.next
 
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=base --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
-
-######################
-# Prepare the workers app
-######################
-
 ENTRYPOINT ["/init"]
 
-################# The AIO ##############
+################# The AIO (All-in-one) ##############
 
 FROM aio_builder AS aio
 
+# Enable only web service (no workers for now)
 RUN touch /etc/s6-overlay/s6-rc.d/user/contents.d/init-db-migration \
-    /etc/s6-overlay/s6-rc.d/user/contents.d/svc-web \
-    /etc/s6-overlay/s6-rc.d/user/contents.d/svc-workers
+    /etc/s6-overlay/s6-rc.d/user/contents.d/svc-web
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
 
-################# The web container ##############
+################# The web container (for future use) ##############
 
 FROM aio_builder AS web
 
@@ -119,13 +117,3 @@ RUN touch /etc/s6-overlay/s6-rc.d/user/contents.d/init-db-migration \
 ENV USING_LEGACY_SEPARATE_CONTAINERS=true
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
-
-################# The workers container ##############
-
-FROM aio_builder AS workers
-
-# In the current implemtation, the workers assume the migration
-# is done for them.
-RUN rm /etc/s6-overlay/s6-rc.d/svc-workers/dependencies.d/init-db-migration \
-    && touch /etc/s6-overlay/s6-rc.d/user/contents.d/svc-workers
-ENV USING_LEGACY_SEPARATE_CONTAINERS=true
