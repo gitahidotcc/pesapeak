@@ -21,7 +21,7 @@ jobs:
             os: ubuntu-latest
           - platform: linux/arm64
             suffix: arm64
-            os: ubuntu-24.04-arm
+            os: ubuntu-latest
           - image: aio
             name: pesapeak-aio
             target: aio
@@ -91,6 +91,7 @@ jobs:
 
   manifest:
     needs: build
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -123,12 +124,34 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Check if an image exists in the registry
+          image_exists() {
+            local image="$1"
+            docker buildx imagetools inspect "${image}" > /dev/null 2>&1
+          }
+
+          # Create manifest with available platforms
           create_manifest() {
             local tag="$1"
-            docker buildx imagetools create \
-              -t "${tag}" \
-              "${tag}-amd64" \
-              "${tag}-arm64"
+            local platforms=()
+            
+            # Check which platform images exist
+            if image_exists "${tag}-amd64"; then
+              platforms+=("${tag}-amd64")
+            fi
+            
+            if image_exists "${tag}-arm64"; then
+              platforms+=("${tag}-arm64")
+            fi
+            
+            # Only create manifest if at least one platform exists
+            if [ ${#platforms[@]} -eq 0 ]; then
+              echo "Warning: No platform images found for ${tag}, skipping manifest creation"
+              return 0
+            fi
+            
+            echo "Creating manifest for ${tag} with platforms: ${platforms[*]}"
+            docker buildx imagetools create -t "${tag}" "${platforms[@]}"
           }
 
           # Only create 'latest' manifests on pushes to main
