@@ -53,9 +53,33 @@ const ICON_MAP: Record<string, LucideIcon> = {
   heart: Heart,
 };
 
+const ICON_MAP: Record<string, LucideIcon> = {
+  banknote: Banknote,
+  wallet: Wallet,
+  "credit-card": CreditCard,
+  "piggy-bank": PiggyBank,
+  coins: Coins,
+  landmark: Landmark,
+  building: Building,
+  "building-2": Building2,
+  home: Home,
+  briefcase: Briefcase,
+  "shopping-cart": ShoppingCart,
+  "trending-up": TrendingUp,
+  "dollar-sign": DollarSign,
+  euro: Euro,
+  bitcoin: Bitcoin,
+  smartphone: Smartphone,
+  car: Car,
+  plane: Plane,
+  gift: Gift,
+  heart: Heart,
+};
+
 interface TransactionsListProps {
   filter: PeriodFilter;
   selectedAccountId?: string | null;
+  selectedCategoryId?: string | null;
 }
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
@@ -116,6 +140,7 @@ const PAGE_SIZE = 50;
 export function TransactionsList({
   filter,
   selectedAccountId,
+  selectedCategoryId,
 }: TransactionsListProps) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -132,6 +157,7 @@ export function TransactionsList({
       startDate?: string;
       endDate?: string;
       accountId?: string;
+      categoryId?: string;
     } = {};
 
     if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
@@ -153,14 +179,17 @@ export function TransactionsList({
       params.accountId = selectedAccountId;
     }
 
+    if (selectedCategoryId) {
+      params.categoryId = selectedCategoryId;
+    }
+
     return params;
-  }, [filter, selectedAccountId]);
+  }, [filter, selectedAccountId, selectedCategoryId]);
 
   const {
     data,
     fetchNextPage,
     hasNextPage,
-    isLoading,
     isFetchingNextPage,
     status,
   } = api.transactions.list.useInfiniteQuery(

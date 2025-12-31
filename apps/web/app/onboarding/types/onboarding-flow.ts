@@ -29,6 +29,14 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   cash: "Cash",
 };
 
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  savings: "Savings Account",
+  "credit-card": "Credit Card",
+  current: "Current Account",
+  "mobile-money": "Mobile Money",
+  cash: "Cash",
+};
+
 export type OnboardingContext = {
   accounts: OnboardingAccount[];
   accountsLoading: boolean;

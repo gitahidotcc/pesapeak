@@ -221,14 +221,12 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
         }
         
         // If a new file is selected, include it (replaces existing)
-        // If existingAttachment was removed (null), we need to signal deletion
-        // For now, if no new attachment and no existingAttachment, we don't send attachment field
-        // which means the existing one stays. To remove, we'd need backend support.
         if (attachment) {
           updateData.attachment = attachment;
         } else if (!formData.existingAttachment && editingTransaction.attachmentPath) {
-          // User removed existing attachment - we'd need backend to support this
-          // todo For now, we'll leave it as is (existing attachment stays)
+          // User removed existing attachment and did not upload a new one
+          // Signal explicit removal to the backend
+          updateData.removeAttachment = true;
         }
         
         await updateTransaction.mutateAsync(updateData);

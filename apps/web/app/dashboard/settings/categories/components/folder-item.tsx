@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type React from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Trash2, type LucideIcon } from "lucide-react";
 import {
     Banknote,
@@ -113,6 +114,7 @@ export function FolderItem({
     onEditCategory,
     onDeleteCategory,
 }: FolderItemProps) {
+    const router = useRouter();
     const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
     const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -256,8 +258,7 @@ export function FolderItem({
                 onEdit={(cat) => setEditingCategory(cat)}
                 onDelete={(cat) => setDeletingCategory(cat)}
                 onShowTransactions={(cat) => {
-                    // TODO: Implement show transactions
-                    console.log("Show transactions for:", cat.name);
+                    router.push(`/dashboard/transactions?categoryId=${cat.id}`);
                 }}
             />
         </>

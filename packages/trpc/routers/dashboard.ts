@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, or } from "drizzle-orm";
 import { z } from "zod";
 import { financialAccounts, transactions } from "@pesapeak/db/schema";
 import { authedProcedure, router } from "../index";
@@ -59,7 +59,6 @@ export const dashboardRouter = router({
             // Balance(Now) is known.
             // Transactions between EndDate(end) and Now needed to be reversed.
 
-            const now = new Date();
             // Parse dates in user's timezone if possible, but for now allow simple string comparison or UTC
             // We will treat the input dates as the "End" of that day in UTC roughly for filtering
 
@@ -80,13 +79,14 @@ export const dashboardRouter = router({
                 // Note: Transfers OUT reduce balance, Transfers IN increase it.
                 // Expenses reduce, Income increases.
                 // We need to filter properly.
-                transactionConditions.push(
-                    or(
-                        eq(transactions.accountId, input.accountId),
-                        eq(transactions.fromAccountId, input.accountId),
-                        eq(transactions.toAccountId, input.accountId)
-                    )
+                const accountCondition = or(
+                    eq(transactions.accountId, input.accountId),
+                    eq(transactions.fromAccountId, input.accountId),
+                    eq(transactions.toAccountId, input.accountId)
                 );
+                if (accountCondition) {
+                    transactionConditions.push(accountCondition);
+                }
             } else {
                 // All accounts: Transfers between own accounts cancel out in TOTAL balance?
                 // Yes, if I transfer 100 from A to B, total balance change is 0.
@@ -332,6 +332,4 @@ function revertTransaction(currentBalance: number, txn: any, targetAccountId?: s
     }
 }
 
-function or(...args: any[]): any {
-    return sql`(${sql.join(args, sql` OR `)})`;
-}
+// Note: we use the `or` helper from `drizzle-orm` for composable SQL conditions.

@@ -7,8 +7,6 @@ type StepperProps = {
   currentStep: number;
 };
 
-import { cn } from "@/lib/utils";
-
 export function Stepper({ steps, currentStep }: StepperProps) {
   const progress = ((currentStep + 1) / steps.length) * 100;
   const currentStepData = steps[currentStep];

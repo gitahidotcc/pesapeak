@@ -37,6 +37,8 @@ export function useOnboardingFlow(initialStep: number = 0) {
 
   const updateStepMutation = api.onboarding.updateStep.useMutation();
 
+  const updateStepMutation = api.onboarding.updateStep.useMutation();
+
   const goToStep = useCallback(
     (stepIndex: number) => {
       const limitedIndex = Math.max(0, Math.min(stepIndex, ONBOARDING_STEPS.length - 1));

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/trpc";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import {
     Dialog,
     DialogContent,

@@ -8,7 +8,6 @@ import { IncomeExpenseChart } from "./income-expense-chart";
 import { PeriodFilter } from "../transactions/components/period-filter-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export function DashboardClient() {
     const now = new Date();
@@ -48,7 +47,7 @@ export function DashboardClient() {
         };
     }, [filter]);
 
-    const { data: historyData, isLoading } = api.dashboard.history.useQuery({
+    const { data: historyData } = api.dashboard.history.useQuery({
         accountId: selectedAccountId ?? undefined,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
@@ -70,19 +69,19 @@ export function DashboardClient() {
     };
 
     const periodLabel = useMemo(() => {
-        if (filter.type === 'month' && filter.month !== undefined) {
-            return new Date(filter.year!, filter.month!).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
+            return new Date(filter.year, filter.month).toLocaleDateString(undefined, {
+                month: "long",
+                year: "numeric",
+            });
         }
-        return 'Selected Period';
+        return "Selected Period";
     }, [filter]);
 
     // Calculations for summary cards
     // Total Income / Expense for the period
     const totalIncome = historyData?.totalIncome ?? 0;
     const totalExpenses = historyData?.totalExpenses ?? 0;
-
-    // Net
-    const net = totalIncome - totalExpenses;
 
     // Filter accounts for the dropdown
     // We can pass `accounts` to the dialog.

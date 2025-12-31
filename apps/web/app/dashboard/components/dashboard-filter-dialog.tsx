@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, type ReactNode } from "react";
-import { Filter, Calendar, ChevronDown } from "lucide-react";
+import { Filter, ChevronDown } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -42,14 +42,9 @@ export function DashboardFilterDialog({
     trigger,
 }: DashboardFilterDialogProps) {
     const [open, setOpen] = useState(false);
-    type PeriodTab = "month";
-    // For dashboard, maybe we only support Month view initially as requested "past month by default"
-    // But having Year view is nice.
-    const [activeTab, setActiveTab] = useState<PeriodTab>("month");
+    // For dashboard, we currently only support Month view (\"past month by default\").
 
     const { data: periodsData, status: periodsStatus } = api.transactions.periods.useQuery();
-
-    const currency = accounts?.[0]?.currency ?? "USD";
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
@@ -78,15 +73,6 @@ export function DashboardFilterDialog({
             return b.month - a.month;
         });
     }, [periodsData]);
-
-    const monthsByYear = useMemo(() => {
-        const map: Record<number, MonthSummary[]> = {};
-        normalizedMonthSummaries.forEach((summary) => {
-            if (!map[summary.year]) map[summary.year] = [];
-            map[summary.year].push(summary);
-        });
-        return map;
-    }, [normalizedMonthSummaries]);
 
     const handleMonthSelect = (year: number, month: number) => {
         onPeriodFilterChange({ type: "month", year, month });

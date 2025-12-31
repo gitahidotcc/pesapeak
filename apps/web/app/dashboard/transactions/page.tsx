@@ -6,6 +6,7 @@ import { TransactionsPageClient } from "./components/transactions-page-client";
 interface TransactionsPageProps {
   searchParams?: {
     accountId?: string;
+    categoryId?: string;
   };
 }
 
@@ -18,7 +19,10 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
 
   return (
     <>
-      <TransactionsPageClient initialAccountId={searchParams?.accountId ?? null} />
+      <TransactionsPageClient 
+        initialAccountId={searchParams?.accountId ?? null}
+        initialCategoryId={searchParams?.categoryId ?? null}
+      />
       <FloatingActionButtonWrapper />
     </>
   );
