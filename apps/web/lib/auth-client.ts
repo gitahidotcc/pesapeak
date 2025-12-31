@@ -1,8 +1,17 @@
 import { createAuthClient } from "better-auth/react";
-import serverConfig from "@pesapeak/shared/config";
+
+
+function getBaseURL(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  // Server-side fallback
+  return "http://localhost:3000";
+}
+
 
 export const authClient = createAuthClient({
-  baseURL: serverConfig.publicUrl,
+  baseURL: getBaseURL(),
 });
 
 // Export useful hooks and methods
