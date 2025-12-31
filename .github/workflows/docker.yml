@@ -91,7 +91,7 @@ jobs:
 
   manifest:
     needs: build
-    if: always()
+    if: ${{ success() || failure() }}
     runs-on: ubuntu-latest
     permissions:
       packages: write
