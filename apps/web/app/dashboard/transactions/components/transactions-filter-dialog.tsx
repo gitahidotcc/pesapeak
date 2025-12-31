@@ -168,11 +168,6 @@ export function TransactionsFilterDialog({
     setOpen(false);
   };
 
-  const handleMonthSelect = (year: number, month: number) => {
-    onPeriodFilterChange({ type: "month", year, month });
-    setOpen(false);
-  };
-
   const getFilterSummary = () => {
     const parts: string[] = [];
 

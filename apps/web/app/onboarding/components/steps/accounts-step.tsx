@@ -5,27 +5,6 @@ import { StepComponentProps } from "@/app/onboarding/types/step-component";
 import { CURRENCY_FLAG_MAP, formatBalance } from "@/app/onboarding/lib/format";
 import { CreateAccountForm } from "@/app/dashboard/settings/accounts/components/create-account-form";
 
-const CURRENCY_FLAG_MAP: Record<string, string> = {
-  KES: "🇰🇪",
-  USD: "🇺🇸",
-  EUR: "🇪🇺",
-  GBP: "🇬🇧",
-};
-
-const formatBalance = (value: number | undefined, currency?: string) => {
-  const amount = typeof value === "number" ? value : 0;
-
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency ?? "USD",
-      maximumFractionDigits: 2,
-    }).format(amount);
-  } catch {
-    return `${amount.toLocaleString()} ${currency ?? ""}`.trim();
-  }
-};
-
 const formatTimestamp = (value: string) => {
   if (!value) {
     return "—";
