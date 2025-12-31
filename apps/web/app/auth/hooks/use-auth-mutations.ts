@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/trpc";
-import { authClient } from "@/lib/auth-client";
+import { useAuthClient } from "@/lib/auth-client";
 import { signInSchema, signUpSchema, forgotPasswordSchema, resetPasswordSchema } from "../validations/auth";
 import type { 
   SignInFormData, 
@@ -13,6 +13,7 @@ import type {
 // Sign In Mutation
 export function useSignInMutation() {
   const router = useRouter();
+  const authClient = useAuthClient();
   
   return useMutation({
     mutationFn: async (data: SignInFormData) => {
@@ -52,6 +53,7 @@ export function useSignInMutation() {
 export function useSignUpMutation() {
   const router = useRouter();
   const utils = api.useUtils();
+  const authClient = useAuthClient();
   
   return useMutation({
     mutationFn: async (data: SignUpFormData) => {
@@ -99,6 +101,8 @@ export function useSignUpMutation() {
 
 // Forgot Password Mutation
 export function useForgotPasswordMutation() {
+  const authClient = useAuthClient();
+  
   return useMutation({
     mutationFn: async (data: ForgotPasswordFormData) => {
       // Validate data with Zod
@@ -128,6 +132,7 @@ export function useForgotPasswordMutation() {
 // Reset Password Mutation
 export function useResetPasswordMutation() {
   const router = useRouter();
+  const authClient = useAuthClient();
   
   return useMutation({
     mutationFn: async (data: ResetPasswordFormData) => {

@@ -1,20 +1,31 @@
 import { createAuthClient } from "better-auth/react";
+import { useClientConfig } from "./client-config";
 
-
-function getBaseURL(): string {
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-  // Server-side fallback
-  return "http://localhost:3000";
+// function to create auth client with correct baseURL
+function createAuthClientWithURL(baseURL: string) {
+  return createAuthClient({
+    baseURL,
+  });
 }
 
 
-export const authClient = createAuthClient({
-  baseURL: getBaseURL(),
-});
+const defaultBaseURL = typeof window !== "undefined" 
+  ? window.location.origin 
+  : "http://localhost:3000";
 
-// Export useful hooks and methods
+export const authClient = createAuthClientWithURL(defaultBaseURL);
+
+
+export function useAuthClient() {
+  const config = useClientConfig();
+
+  const baseURL = config.publicUrl || (typeof window !== "undefined" 
+    ? window.location.origin 
+    : defaultBaseURL);
+  
+  return createAuthClientWithURL(baseURL);
+}
+
 export const {
   useSession,
   signIn,
