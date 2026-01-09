@@ -1,0 +1,224 @@
+import { eq, sql } from "drizzle-orm";
+import { transactions, financialAccounts, categories } from "@pesapeak/db/schema";
+import { authedProcedure } from "../../index";
+import { createTransactionInputSchema, transactionOutputSchema } from "./schemas";
+import { saveAttachment } from "./utils";
+import { createId } from "@paralleldrive/cuid2";
+
+export const create = authedProcedure
+  .input(createTransactionInputSchema)
+  .output(transactionOutputSchema)
+  .mutation(async ({ ctx, input }) => {
+    // Validate based on transaction type
+    if (input.type === "income" || input.type === "expense") {
+      if (!input.accountId) {
+        throw new Error("Account is required for income/expense transactions");
+      }
+      if (!input.categoryId) {
+        throw new Error("Category is required for income/expense transactions");
+      }
+    } else if (input.type === "transfer") {
+      if (!input.fromAccountId || !input.toAccountId) {
+        throw new Error("From and to accounts are required for transfer transactions");
+      }
+      if (input.fromAccountId === input.toAccountId) {
+        throw new Error("From and to accounts must be different");
+      }
+    }
+
+    // Validate fee usage
+    if (input.fee && !(input.type === "expense" || input.type === "transfer")) {
+      throw new Error("Fees are only supported for expense and transfer transactions");
+    }
+
+    // Convert amounts to cents
+    const amountInCents = Math.round(input.amount * 100);
+    const feeAmountInCents = input.fee ? Math.round(input.fee.amount * 100) : 0;
+
+    // Parse date and time - combine date string (YYYY-MM-DD) with optional time (HH:mm)
+    // Use UTC to ensure consistent storage regardless of server timezone
+    const [year, month, day] = input.date.split("-").map(Number);
+    let dateObj: Date;
+    if (input.time) {
+      const [hours, minutes] = input.time.split(":").map(Number);
+      dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+    } else {
+      dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    }
+
+    const transactionId = createId();
+    const feeTransactionId = input.fee ? createId() : null;
+
+    // Handle attachment upload if provided
+    let attachmentPath: string | null = null;
+    let attachmentFileName: string | null = null;
+    let attachmentMimeType: string | null = null;
+
+    if (input.attachment) {
+      const saved = await saveAttachment(ctx.user.id, transactionId, input.attachment);
+      attachmentPath = saved.path;
+      attachmentFileName = saved.fileName;
+      attachmentMimeType = saved.mimeType;
+    }
+
+    // Create main transaction
+    const [newTransaction] = await ctx.db
+      .insert(transactions)
+      .values({
+        id: transactionId,
+        userId: ctx.user.id,
+        type: input.type,
+        amount: amountInCents,
+        accountId: input.accountId ?? null,
+        categoryId: input.categoryId ?? null,
+        fromAccountId: input.fromAccountId ?? null,
+        toAccountId: input.toAccountId ?? null,
+        date: dateObj,
+        time: input.time ?? null,
+        notes: input.notes ?? "",
+        attachmentPath,
+        attachmentFileName,
+        attachmentMimeType,
+        isFee: false,
+      })
+      .returning();
+
+    if (!newTransaction) {
+      throw new Error("Failed to create transaction");
+    }
+
+    // Optional fee transaction (separate, linked expense)
+    if (input.fee && feeTransactionId) {
+      // Determine source account for the fee
+      const sourceAccountId =
+        input.type === "transfer" ? input.fromAccountId! : input.accountId!;
+
+      const feeAccountId = input.fee.accountId ?? sourceAccountId;
+
+      // Resolve default fee category if none provided
+      let feeCategoryId = input.fee.categoryId ?? null;
+      if (!feeCategoryId) {
+        const userCategories = await ctx.db.query.categories.findMany({
+          where: eq(categories.userId, ctx.user.id),
+        });
+        const feeCategory = userCategories.find((cat) => {
+          const name = cat.name.toLowerCase();
+          return (
+            name === "bank fees" ||
+            name === "transaction fees" ||
+            name === "fees"
+          );
+        });
+        feeCategoryId = feeCategory?.id ?? null;
+      }
+
+      await ctx.db.insert(transactions).values({
+        id: feeTransactionId,
+        userId: ctx.user.id,
+        type: "expense",
+        amount: feeAmountInCents,
+        accountId: feeAccountId,
+        categoryId: feeCategoryId,
+        fromAccountId: null,
+        toAccountId: null,
+        date: dateObj,
+        time: input.time ?? null,
+        notes: input.notes ? `Fee: ${input.notes}` : "Transaction fee",
+        attachmentPath: null,
+        attachmentFileName: null,
+        attachmentMimeType: null,
+        parentTransactionId: transactionId,
+        isFee: true,
+      });
+    }
+
+    // Update account balances
+    if (input.type === "income") {
+      // Increase account balance
+      await ctx.db
+        .update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} + ${amountInCents}`,
+        })
+        .where(eq(financialAccounts.id, input.accountId!));
+    } else if (input.type === "expense") {
+      // Decrease account balance
+      await ctx.db
+        .update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} - ${amountInCents}`,
+        })
+        .where(eq(financialAccounts.id, input.accountId!));
+      if (input.fee) {
+        const sourceAccountId = input.accountId!;
+        const feeAccountId = input.fee.accountId ?? sourceAccountId;
+        await ctx.db
+          .update(financialAccounts)
+          .set({
+            totalBalance: sql`${financialAccounts.totalBalance} - ${feeAmountInCents}`,
+          })
+          .where(eq(financialAccounts.id, feeAccountId));
+      }
+    } else if (input.type === "transfer") {
+      // Decrease from account, increase to account
+      await ctx.db
+        .update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} - ${amountInCents}`,
+        })
+        .where(eq(financialAccounts.id, input.fromAccountId!));
+
+      await ctx.db
+        .update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} + ${amountInCents}`,
+        })
+        .where(eq(financialAccounts.id, input.toAccountId!));
+
+      if (input.fee) {
+        const sourceAccountId = input.fromAccountId!;
+        const feeAccountId = input.fee.accountId ?? sourceAccountId;
+        await ctx.db
+          .update(financialAccounts)
+          .set({
+            totalBalance: sql`${financialAccounts.totalBalance} - ${feeAmountInCents}`,
+          })
+          .where(eq(financialAccounts.id, feeAccountId));
+      }
+    }
+
+    // Fetch category data if categoryId exists
+    let categoryIcon: string | null = null;
+    let categoryColor: string | null = null;
+    if (newTransaction.categoryId) {
+      const category = await ctx.db.query.categories.findFirst({
+        where: eq(categories.id, newTransaction.categoryId),
+      });
+      if (category) {
+        categoryIcon = category.icon;
+        categoryColor = category.color;
+      }
+    }
+
+    return {
+      id: newTransaction.id,
+      type: newTransaction.type as "income" | "expense" | "transfer",
+      amount: newTransaction.amount ?? 0,
+      accountId: newTransaction.accountId ?? null,
+      categoryId: newTransaction.categoryId ?? null,
+      categoryIcon,
+      categoryColor,
+      fromAccountId: newTransaction.fromAccountId ?? null,
+      toAccountId: newTransaction.toAccountId ?? null,
+      parentTransactionId: newTransaction.parentTransactionId ?? null,
+      isFee: Boolean(newTransaction.isFee),
+      date: new Date(newTransaction.date ?? Date.now()).toISOString(),
+      time: newTransaction.time ?? null,
+      notes: newTransaction.notes ?? "",
+      attachmentPath: newTransaction.attachmentPath ?? null,
+      attachmentFileName: newTransaction.attachmentFileName ?? null,
+      attachmentMimeType: newTransaction.attachmentMimeType ?? null,
+      createdAt: new Date(newTransaction.createdAt ?? Date.now()).toISOString(),
+      updatedAt: new Date(newTransaction.updatedAt ?? Date.now()).toISOString(),
+    };
+  });

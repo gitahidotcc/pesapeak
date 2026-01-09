@@ -1,0 +1,67 @@
+import { z } from "zod";
+
+export const transactionOutputSchema = z.object({
+  id: z.string(),
+  type: z.enum(["income", "expense", "transfer"]),
+  amount: z.number(),
+  accountId: z.string().nullable(),
+  categoryId: z.string().nullable(),
+  categoryIcon: z.string().nullable(),
+  categoryColor: z.string().nullable(),
+  fromAccountId: z.string().nullable(),
+  toAccountId: z.string().nullable(),
+  // Fee / linked-transaction metadata
+  parentTransactionId: z.string().nullable(),
+  isFee: z.boolean(),
+  date: z.string(),
+  time: z.string().nullable(),
+  notes: z.string(),
+  attachmentPath: z.string().nullable(),
+  attachmentFileName: z.string().nullable(),
+  attachmentMimeType: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const feeInputSchema = z
+  .object({
+    amount: z.number().min(0.01, "Fee amount must be greater than 0"),
+    accountId: z.string().optional(),
+    categoryId: z.string().optional(),
+  })
+  .optional();
+
+export const createTransactionInputSchema = z.object({
+  type: z.enum(["income", "expense", "transfer"]),
+  amount: z.number().min(0.01, "Amount must be greater than 0"),
+  accountId: z.string().optional(),
+  categoryId: z.string().optional(),
+  fromAccountId: z.string().optional(),
+  toAccountId: z.string().optional(),
+  date: z.string(), // ISO date string
+  time: z.string().optional(), // HH:mm format
+  notes: z.string().optional(),
+  fee: feeInputSchema,
+  attachment: z
+    .object({
+      fileName: z.string(),
+      mimeType: z.string(),
+      data: z.string(), // base64 encoded
+    })
+    .optional(),
+});
+
+export const transactionFiltersSchema = z.object({
+  accountId: z.string().optional(),
+  categoryId: z.string().optional(),
+  type: z.enum(["income", "expense", "transfer"]).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const listInputSchema = transactionFiltersSchema.extend({
+  limit: z.number().min(1).max(100).default(50),
+  cursor: z.number().min(0).optional(),
+});
+
+export type TransactionFilters = z.infer<typeof transactionFiltersSchema>;
