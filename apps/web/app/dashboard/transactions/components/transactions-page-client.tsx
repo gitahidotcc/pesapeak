@@ -279,12 +279,11 @@ function TransactionsHeader({ periodLabel, periodTrigger, onSearchClick, searchQ
           />
           <Button
             onClick={onAddClick}
-            className="gap-2 h-10 sm:h-auto"
+            className="gap-2 h-10 sm:h-auto hidden sm:flex"
             size="default"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Transaction</span>
-            <span className="sm:hidden">Add</span>
+            <span>Add Transaction</span>
           </Button>
         </div>
       </div>

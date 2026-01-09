@@ -141,10 +141,15 @@ export function TransactionDetailsDialog({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const utils = api.useUtils();
   const deleteTransaction = api.transactions.delete.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Transaction deleted successfully");
-      utils.transactions.list.invalidate();
-      utils.accounts.list.invalidate();
+      // Invalidate all transaction list queries (including infinite queries)
+      // This will mark them as stale and trigger automatic refetch
+      await utils.transactions.list.invalidate(undefined);
+      // Invalidate summary query to update totals
+      await utils.transactions.summary.invalidate(undefined);
+      // Refresh account balances
+      await utils.accounts.list.invalidate();
       setIsConfirmOpen(false);
       onOpenChange(false);
     },
