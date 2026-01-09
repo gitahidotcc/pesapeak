@@ -62,6 +62,7 @@ export const transactionFiltersSchema = z.object({
 export const listInputSchema = transactionFiltersSchema.extend({
   limit: z.number().min(1).max(100).default(50),
   cursor: z.number().min(0).optional(),
+  search: z.string().optional(),
 });
 
 export type TransactionFilters = z.infer<typeof transactionFiltersSchema>;

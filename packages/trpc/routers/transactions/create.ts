@@ -1,8 +1,12 @@
-import { eq, sql } from "drizzle-orm";
-import { transactions, financialAccounts, categories } from "@pesapeak/db/schema";
+import { eq } from "drizzle-orm";
+import { transactions, categories } from "@pesapeak/db/schema";
 import { authedProcedure } from "../../index";
 import { createTransactionInputSchema, transactionOutputSchema } from "./schemas";
-import { saveAttachment } from "./utils";
+import {
+  saveAttachment,
+  runTransaction,
+  applyTransactionBalanceEffects,
+} from "./utils";
 import { createId } from "@paralleldrive/cuid2";
 
 export const create = authedProcedure
@@ -49,7 +53,7 @@ export const create = authedProcedure
     const transactionId = createId();
     const feeTransactionId = input.fee ? createId() : null;
 
-    // Handle attachment upload if provided
+    // Handle attachment upload if provided (file system operation, outside transaction)
     let attachmentPath: string | null = null;
     let attachmentFileName: string | null = null;
     let attachmentMimeType: string | null = null;
@@ -61,130 +65,128 @@ export const create = authedProcedure
       attachmentMimeType = saved.mimeType;
     }
 
-    // Create main transaction
-    const [newTransaction] = await ctx.db
-      .insert(transactions)
-      .values({
-        id: transactionId,
-        userId: ctx.user.id,
-        type: input.type,
-        amount: amountInCents,
-        accountId: input.accountId ?? null,
-        categoryId: input.categoryId ?? null,
-        fromAccountId: input.fromAccountId ?? null,
-        toAccountId: input.toAccountId ?? null,
-        date: dateObj,
-        time: input.time ?? null,
-        notes: input.notes ?? "",
-        attachmentPath,
-        attachmentFileName,
-        attachmentMimeType,
-        isFee: false,
-      })
-      .returning();
+    // Pre-fetch fee category if needed (before transaction)
+    let feeCategoryId: string | null = null;
+    if (input.fee && !input.fee.categoryId) {
+      const userCategories = await ctx.db.query.categories.findMany({
+        where: eq(categories.userId, ctx.user.id),
+      });
+      const feeCategory = userCategories.find((cat) => {
+        const name = cat.name.toLowerCase();
+        return (
+          name === "bank fees" ||
+          name === "transaction fees" ||
+          name === "fees"
+        );
+      });
+      feeCategoryId = feeCategory?.id ?? null;
+    } else if (input.fee) {
+      feeCategoryId = input.fee.categoryId ?? null;
+    }
+
+    // Wrap all database operations in a transaction for atomicity
+    const newTransaction = await runTransaction(
+      ctx.db,
+      async () => {
+        // Pre-fetch complete - return data needed for transaction
+        return {
+          feeCategoryId,
+          feeTransactionId,
+          attachmentPath,
+          attachmentFileName,
+          attachmentMimeType,
+        };
+      },
+      (tx, preFetched) => {
+        // Create main transaction
+        const [created] = tx
+          .insert(transactions)
+          .values({
+            id: transactionId,
+            userId: ctx.user.id,
+            type: input.type,
+            amount: amountInCents,
+            accountId: input.accountId ?? null,
+            categoryId: input.categoryId ?? null,
+            fromAccountId: input.fromAccountId ?? null,
+            toAccountId: input.toAccountId ?? null,
+            date: dateObj,
+            time: input.time ?? null,
+            notes: input.notes ?? "",
+            attachmentPath: preFetched.attachmentPath,
+            attachmentFileName: preFetched.attachmentFileName,
+            attachmentMimeType: preFetched.attachmentMimeType,
+            isFee: false,
+          })
+          .returning()
+          .all();
+
+        if (!created) {
+          throw new Error("Failed to create transaction");
+        }
+
+        // Optional fee transaction (separate, linked expense)
+        if (input.fee && preFetched.feeTransactionId) {
+          // Determine source account for the fee
+          const sourceAccountId =
+            input.type === "transfer" ? input.fromAccountId! : input.accountId!;
+
+          const feeAccountId = input.fee.accountId ?? sourceAccountId;
+
+          tx.insert(transactions)
+            .values({
+              id: preFetched.feeTransactionId,
+              userId: ctx.user.id,
+              type: "expense",
+              amount: feeAmountInCents,
+              accountId: feeAccountId,
+              categoryId: preFetched.feeCategoryId,
+              fromAccountId: null,
+              toAccountId: null,
+              date: dateObj,
+              time: input.time ?? null,
+              notes: input.notes ? `Fee: ${input.notes}` : "Transaction fee",
+              attachmentPath: null,
+              attachmentFileName: null,
+              attachmentMimeType: null,
+              parentTransactionId: transactionId,
+              isFee: true,
+            })
+            .run();
+        }
+
+        // Apply balance effects for the main transaction
+        applyTransactionBalanceEffects(tx, {
+          type: input.type,
+          amount: amountInCents,
+          accountId: input.accountId ?? null,
+          fromAccountId: input.fromAccountId ?? null,
+          toAccountId: input.toAccountId ?? null,
+        });
+
+        // Apply balance effects for fee if present
+        if (input.fee) {
+          const sourceAccountId =
+            input.type === "transfer" ? input.fromAccountId! : input.accountId!;
+          const feeAccountId = input.fee.accountId ?? sourceAccountId;
+
+          if (feeAccountId) {
+            applyTransactionBalanceEffects(tx, {
+              type: "expense",
+              amount: feeAmountInCents,
+              accountId: feeAccountId,
+              fromAccountId: null,
+              toAccountId: null,
+            });
+          }
+        }
+
+        return created;
+      }
+    );
 
     if (!newTransaction) {
       throw new Error("Failed to create transaction");
-    }
-
-    // Optional fee transaction (separate, linked expense)
-    if (input.fee && feeTransactionId) {
-      // Determine source account for the fee
-      const sourceAccountId =
-        input.type === "transfer" ? input.fromAccountId! : input.accountId!;
-
-      const feeAccountId = input.fee.accountId ?? sourceAccountId;
-
-      // Resolve default fee category if none provided
-      let feeCategoryId = input.fee.categoryId ?? null;
-      if (!feeCategoryId) {
-        const userCategories = await ctx.db.query.categories.findMany({
-          where: eq(categories.userId, ctx.user.id),
-        });
-        const feeCategory = userCategories.find((cat) => {
-          const name = cat.name.toLowerCase();
-          return (
-            name === "bank fees" ||
-            name === "transaction fees" ||
-            name === "fees"
-          );
-        });
-        feeCategoryId = feeCategory?.id ?? null;
-      }
-
-      await ctx.db.insert(transactions).values({
-        id: feeTransactionId,
-        userId: ctx.user.id,
-        type: "expense",
-        amount: feeAmountInCents,
-        accountId: feeAccountId,
-        categoryId: feeCategoryId,
-        fromAccountId: null,
-        toAccountId: null,
-        date: dateObj,
-        time: input.time ?? null,
-        notes: input.notes ? `Fee: ${input.notes}` : "Transaction fee",
-        attachmentPath: null,
-        attachmentFileName: null,
-        attachmentMimeType: null,
-        parentTransactionId: transactionId,
-        isFee: true,
-      });
-    }
-
-    // Update account balances
-    if (input.type === "income") {
-      // Increase account balance
-      await ctx.db
-        .update(financialAccounts)
-        .set({
-          totalBalance: sql`${financialAccounts.totalBalance} + ${amountInCents}`,
-        })
-        .where(eq(financialAccounts.id, input.accountId!));
-    } else if (input.type === "expense") {
-      // Decrease account balance
-      await ctx.db
-        .update(financialAccounts)
-        .set({
-          totalBalance: sql`${financialAccounts.totalBalance} - ${amountInCents}`,
-        })
-        .where(eq(financialAccounts.id, input.accountId!));
-      if (input.fee) {
-        const sourceAccountId = input.accountId!;
-        const feeAccountId = input.fee.accountId ?? sourceAccountId;
-        await ctx.db
-          .update(financialAccounts)
-          .set({
-            totalBalance: sql`${financialAccounts.totalBalance} - ${feeAmountInCents}`,
-          })
-          .where(eq(financialAccounts.id, feeAccountId));
-      }
-    } else if (input.type === "transfer") {
-      // Decrease from account, increase to account
-      await ctx.db
-        .update(financialAccounts)
-        .set({
-          totalBalance: sql`${financialAccounts.totalBalance} - ${amountInCents}`,
-        })
-        .where(eq(financialAccounts.id, input.fromAccountId!));
-
-      await ctx.db
-        .update(financialAccounts)
-        .set({
-          totalBalance: sql`${financialAccounts.totalBalance} + ${amountInCents}`,
-        })
-        .where(eq(financialAccounts.id, input.toAccountId!));
-
-      if (input.fee) {
-        const sourceAccountId = input.fromAccountId!;
-        const feeAccountId = input.fee.accountId ?? sourceAccountId;
-        await ctx.db
-          .update(financialAccounts)
-          .set({
-            totalBalance: sql`${financialAccounts.totalBalance} - ${feeAmountInCents}`,
-          })
-          .where(eq(financialAccounts.id, feeAccountId));
-      }
     }
 
     // Fetch category data if categoryId exists

@@ -8,12 +8,16 @@ import type { PeriodFilter } from "./period-filter-dialog";
 import { TransactionDetailsDialog } from "./transaction-details-dialog";
 import { AddTransactionDialog } from "./add-transaction-dialog";
 import { TransactionItem } from "./transaction-item";
-import { TransactionListSkeleton } from "./transaction-list-skeleton";
+import { TransactionListSkeleton, LoadingMoreIndicator } from "./transaction-list-skeleton";
+import { EmptyState } from "./empty-state";
 
 interface TransactionsListProps {
   filter: PeriodFilter;
   selectedAccountId?: string | null;
   selectedCategoryId?: string | null;
+  searchQuery?: string;
+  onAddTransaction?: () => void;
+  onClearFilters?: () => void;
 }
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
@@ -60,6 +64,9 @@ export function TransactionsList({
   filter,
   selectedAccountId,
   selectedCategoryId,
+  searchQuery = "",
+  onAddTransaction,
+  onClearFilters,
 }: TransactionsListProps) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -77,6 +84,7 @@ export function TransactionsList({
       endDate?: string;
       accountId?: string;
       categoryId?: string;
+      search?: string;
     } = {};
 
     if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
@@ -102,8 +110,12 @@ export function TransactionsList({
       params.categoryId = selectedCategoryId;
     }
 
+    if (searchQuery && searchQuery.trim()) {
+      params.search = searchQuery.trim();
+    }
+
     return params;
-  }, [filter, selectedAccountId, selectedCategoryId]);
+  }, [filter, selectedAccountId, selectedCategoryId, searchQuery]);
 
   const {
     data,
@@ -231,24 +243,29 @@ export function TransactionsList({
   }
 
   if (status === "success" && flatItems.length === 0) {
+    const hasFilters = Boolean(
+      selectedAccountId || 
+      selectedCategoryId || 
+      searchQuery || 
+      (filter.type !== "all")
+    );
+    
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-          <TransactionListSkeleton />
-          {/* Reusing skeleton wrapper/styles or just text */}
-        </div>
-        <div className="mt-4">
-          <p className="font-semibold">No transactions found</p>
-          <p className="text-sm text-muted-foreground">
-            Try adjusting your filters or add a new transaction.
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        hasFilters={hasFilters}
+        onClearFilters={onClearFilters}
+        onAddTransaction={onAddTransaction}
+        searchQuery={searchQuery}
+      />
     );
   }
 
   return (
-    <div className="h-[600px] w-full" ref={parentRef} style={{ overflowY: "auto", contain: "strict" }}>
+    <div 
+      className="w-full min-h-[400px] max-h-[calc(100vh-24rem)] sm:max-h-[calc(100vh-20rem)]" 
+      ref={parentRef} 
+      style={{ overflowY: "auto", contain: "strict", scrollBehavior: "smooth" }}
+    >
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -271,11 +288,8 @@ export function TransactionsList({
                   height: `${virtualItem.size}px`,
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
-                className="flex items-center justify-center py-4"
               >
-                {isFetchingNextPage ? (
-                  <span className="text-sm text-muted-foreground">Loading more...</span>
-                ) : null}
+                {isFetchingNextPage ? <LoadingMoreIndicator /> : null}
               </div>
             );
           }
@@ -296,17 +310,17 @@ export function TransactionsList({
               className="px-1"
             >
               {item.type === "header" ? (
-                <div className="flex items-end justify-between border-b border-border/50 pb-2 pt-6">
-                  <h3 className="text-sm font-semibold text-muted-foreground">
+                <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground">
                     {formatDate(item.date)}
                   </h3>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-muted-foreground">
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs">
+                    <span className="text-muted-foreground font-medium">
                       {item.count} {item.count === 1 ? "transaction" : "transactions"}
                     </span>
                     <span
                       className={cn(
-                        "font-medium tabular-nums",
+                        "font-semibold tabular-nums",
                         item.total > 0
                           ? "text-emerald-600 dark:text-emerald-400"
                           : item.total < 0

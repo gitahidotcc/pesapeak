@@ -98,12 +98,12 @@ export function TransactionItem({
         <div className="group relative">
             <div
                 onClick={onClick}
-                className="flex cursor-pointer items-center gap-4 rounded-xl border border-transparent bg-card/50 p-3 transition-all hover:border-border/50 hover:bg-muted/50 hover:shadow-sm"
+                className="flex cursor-pointer items-center gap-3 sm:gap-4 rounded-xl border border-border/40 bg-card/60 p-3 sm:p-3.5 transition-all hover:border-border hover:bg-muted/60 hover:shadow-md active:scale-[0.99] touch-manipulation"
             >
                 {/* Icon */}
                 <div
                     className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/40 shadow-sm transition-transform group-hover:scale-105",
+                        "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl border border-border/50 shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md",
                         categoryColor ? undefined : isIncome && "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
                         categoryColor ? undefined : isExpense && "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400",
                         categoryColor ? undefined : isTransfer && "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
@@ -113,12 +113,12 @@ export function TransactionItem({
                             ? {
                                 backgroundColor: `${categoryColor}15`,
                                 color: categoryColor,
-                                borderColor: `${categoryColor}30`,
+                                borderColor: `${categoryColor}40`,
                             }
                             : undefined
                     }
                 >
-                    <CategoryIcon className="h-5 w-5" />
+                    <CategoryIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
 
                 {/* Content */}

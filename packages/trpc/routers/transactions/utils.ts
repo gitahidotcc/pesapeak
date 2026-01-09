@@ -1,10 +1,19 @@
-import { and, eq, gte, lte, or } from "drizzle-orm";
-import { transactions } from "@pesapeak/db/schema";
+import { and, eq, gte, lte, or, sql, like } from "drizzle-orm";
+import { transactions, financialAccounts, categories } from "@pesapeak/db/schema";
 import type { AuthedContext } from "../../index";
+import type { PesapeakDBTransaction, DB } from "@pesapeak/db";
 import fs from "node:fs/promises";
 import path from "node:path";
 import config from "@pesapeak/shared/config";
 import type { TransactionFilters } from "./schemas";
+
+type TransactionRecord = {
+  type: "income" | "expense" | "transfer";
+  amount: number;
+  accountId: string | null;
+  fromAccountId: string | null;
+  toAccountId: string | null;
+};
 
 export async function saveAttachment(
   userId: string,
@@ -43,7 +52,7 @@ export async function saveAttachment(
 
 export function buildTransactionConditions(
   ctx: AuthedContext,
-  filters?: TransactionFilters
+  filters?: TransactionFilters & { search?: string }
 ) {
   const conditions = [eq(transactions.userId, ctx.user.id)];
 
@@ -82,5 +91,154 @@ export function buildTransactionConditions(
     conditions.push(lte(transactions.date, endDate));
   }
 
+  if (filters.search && filters.search.trim()) {
+    const searchTerm = `%${filters.search.trim()}%`;
+    // Search in notes (case-insensitive) - SQLite LIKE is case-insensitive by default for ASCII
+    conditions.push(
+      like(transactions.notes, searchTerm)
+    );
+  }
+
   return conditions;
+}
+
+/**
+ * Reverses the balance effects of one or more transactions.
+ * Used when updating or deleting transactions to undo their previous balance impact.
+ * 
+ * @param tx - The synchronous database transaction
+ * @param txRecords - Array of transaction records to reverse
+ */
+export function reverseTransactionBalanceEffects(
+  tx: PesapeakDBTransaction,
+  txRecords: TransactionRecord[]
+) {
+  for (const txRecord of txRecords) {
+    if (txRecord.type === "income" && txRecord.accountId) {
+      // Income increased balance, so reverse by subtracting
+      tx.update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+        })
+        .where(eq(financialAccounts.id, txRecord.accountId))
+        .run();
+    } else if (txRecord.type === "expense" && txRecord.accountId) {
+      // Expense decreased balance, so reverse by adding
+      tx.update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+        })
+        .where(eq(financialAccounts.id, txRecord.accountId))
+        .run();
+    } else if (txRecord.type === "transfer") {
+      // Transfer: reverse by undoing the from/to account changes
+      if (txRecord.fromAccountId) {
+        // From account was decreased, so reverse by adding
+        tx.update(financialAccounts)
+          .set({
+            totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+          })
+          .where(eq(financialAccounts.id, txRecord.fromAccountId))
+          .run();
+      }
+
+      if (txRecord.toAccountId) {
+        // To account was increased, so reverse by subtracting
+        tx.update(financialAccounts)
+          .set({
+            totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+          })
+          .where(eq(financialAccounts.id, txRecord.toAccountId))
+          .run();
+      }
+    }
+  }
+}
+
+/**
+ * Applies the balance effects of a transaction to the relevant accounts.
+ * Used when creating or updating transactions to apply their balance impact.
+ * 
+ * @param tx - The synchronous database transaction
+ * @param txRecord - Transaction record to apply balance effects for
+ */
+export function applyTransactionBalanceEffects(
+  tx: PesapeakDBTransaction,
+  txRecord: TransactionRecord
+) {
+  if (txRecord.type === "income" && txRecord.accountId) {
+    // Income increases account balance
+    tx.update(financialAccounts)
+      .set({
+        totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+      })
+      .where(eq(financialAccounts.id, txRecord.accountId))
+      .run();
+  } else if (txRecord.type === "expense" && txRecord.accountId) {
+    // Expense decreases account balance
+    tx.update(financialAccounts)
+      .set({
+        totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+      })
+      .where(eq(financialAccounts.id, txRecord.accountId))
+      .run();
+  } else if (txRecord.type === "transfer") {
+    // Transfer: decrease from account, increase to account
+    if (txRecord.fromAccountId) {
+      tx.update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
+        })
+        .where(eq(financialAccounts.id, txRecord.fromAccountId))
+        .run();
+    }
+
+    if (txRecord.toAccountId) {
+      tx.update(financialAccounts)
+        .set({
+          totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
+        })
+        .where(eq(financialAccounts.id, txRecord.toAccountId))
+        .run();
+    }
+  }
+}
+
+/**
+ * Wrapper for running synchronous transactions with better-sqlite3.
+ * Handles the pattern of pre-fetching async data before executing a synchronous transaction.
+ * 
+ * @param db - The database instance
+ * @param preFetch - Async function that pre-fetches any data needed for the transaction
+ * @param transactionFn - Synchronous transaction callback that receives pre-fetched data and transaction object
+ * @returns The result from the transaction callback
+ * 
+ * @example
+ * ```ts
+ * const result = await runTransaction(
+ *   ctx.db,
+ *   async () => {
+ *     const existing = await ctx.db.query.transactions.findFirst(...);
+ *     return { existing };
+ *   },
+ *   (tx, { existing }) => {
+ *     // Synchronous operations using tx
+ *     tx.update(transactions).set({...}).where(...).run();
+ *     return someResult;
+ *   }
+ * );
+ * ```
+ */
+export async function runTransaction<TPreFetch, TResult>(
+  db: DB,
+  preFetch: () => Promise<TPreFetch>,
+  transactionFn: (tx: PesapeakDBTransaction, preFetched: TPreFetch) => TResult
+): Promise<TResult> {
+  // Pre-fetch all async data before starting the transaction
+  const preFetched = await preFetch();
+
+  // Execute synchronous transaction
+  return db.transaction((tx) => {
+    return transactionFn(tx, preFetched);
+  });
 }

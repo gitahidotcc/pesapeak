@@ -1,10 +1,15 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import fs from "node:fs/promises";
-import { transactions, financialAccounts, categories } from "@pesapeak/db/schema";
+import { transactions, categories } from "@pesapeak/db/schema";
 import { authedProcedure } from "../../index";
 import { feeInputSchema, transactionOutputSchema } from "./schemas";
-import { saveAttachment } from "./utils";
+import {
+  saveAttachment,
+  reverseTransactionBalanceEffects,
+  applyTransactionBalanceEffects,
+  runTransaction,
+} from "./utils";
 import { createId } from "@paralleldrive/cuid2";
 
 export const update = authedProcedure
@@ -73,76 +78,51 @@ export const update = authedProcedure
       attachmentMimeType = saved.mimeType;
     }
 
-    // Pre-fetch data needed for the transaction (existing fees and categories)
-    const existingFees = await ctx.db.query.transactions.findMany({
-      where: and(
-        eq(transactions.parentTransactionId, id),
-        eq(transactions.userId, ctx.user.id),
-        eq(transactions.isFee, true)
-      ),
-    });
-
-    // Pre-fetch fee category if needed
-    let feeCategoryId: string | null = null;
-    if (input.fee && !input.fee.categoryId) {
-      const userCategories = await ctx.db.query.categories.findMany({
-        where: eq(categories.userId, ctx.user.id),
-      });
-      const feeCategory = userCategories.find((cat) => {
-        const name = cat.name.toLowerCase();
-        return (
-          name === "bank fees" ||
-          name === "transaction fees" ||
-          name === "fees"
-        );
-      });
-      feeCategoryId = feeCategory?.id ?? null;
-    } else if (input.fee) {
-      feeCategoryId = input.fee.categoryId ?? null;
-    }
-
     // Wrap all database operations in a transaction for atomicity
-    // Note: With better-sqlite3, we need to use synchronous operations
-    // All queries have been pre-fetched above
-    ctx.db.transaction((tx) => {
-      const originalTransactions = [existing, ...existingFees];
+    await runTransaction(
+      ctx.db,
+      async () => {
+        // Pre-fetch data needed for the transaction (existing fees and categories)
+        const existingFees = await ctx.db.query.transactions.findMany({
+          where: and(
+            eq(transactions.parentTransactionId, id),
+            eq(transactions.userId, ctx.user.id),
+            eq(transactions.isFee, true)
+          ),
+        });
+
+        // Pre-fetch fee category if needed
+        let feeCategoryId: string | null = null;
+        if (input.fee && !input.fee.categoryId) {
+          const userCategories = await ctx.db.query.categories.findMany({
+            where: eq(categories.userId, ctx.user.id),
+          });
+          const feeCategory = userCategories.find((cat) => {
+            const name = cat.name.toLowerCase();
+            return (
+              name === "bank fees" ||
+              name === "transaction fees" ||
+              name === "fees"
+            );
+          });
+          feeCategoryId = feeCategory?.id ?? null;
+        } else if (input.fee) {
+          feeCategoryId = input.fee.categoryId ?? null;
+        }
+
+        return {
+          existingFees,
+          feeCategoryId,
+          attachmentPath,
+          attachmentFileName,
+          attachmentMimeType,
+        };
+      },
+      (tx, preFetched) => {
+        const originalTransactions = [existing, ...preFetched.existingFees];
 
       // Reverse original balance effects for the main transaction and any linked fee transactions
-      for (const txRecord of originalTransactions) {
-        if (txRecord.type === "income" && txRecord.accountId) {
-          tx.update(financialAccounts)
-            .set({
-              totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
-            })
-            .where(eq(financialAccounts.id, txRecord.accountId))
-            .run();
-        } else if (txRecord.type === "expense" && txRecord.accountId) {
-          tx.update(financialAccounts)
-            .set({
-              totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
-            })
-            .where(eq(financialAccounts.id, txRecord.accountId))
-            .run();
-        } else if (txRecord.type === "transfer") {
-          if (txRecord.fromAccountId) {
-            tx.update(financialAccounts)
-              .set({
-                totalBalance: sql`${financialAccounts.totalBalance} + ${txRecord.amount}`,
-              })
-              .where(eq(financialAccounts.id, txRecord.fromAccountId))
-              .run();
-          }
-
-          if (txRecord.toAccountId) {
-            tx.update(financialAccounts)
-              .set({
-                totalBalance: sql`${financialAccounts.totalBalance} - ${txRecord.amount}`,
-              })
-              .where(eq(financialAccounts.id, txRecord.toAccountId))
-              .run();
-          }
-        }
-      }
+      reverseTransactionBalanceEffects(tx, originalTransactions);
 
       // Handle field updates
       const updateValues: any = {};
@@ -184,60 +164,59 @@ export const update = authedProcedure
         updateValues.toAccountId = updateData.toAccountId;
       }
 
-      // Handle attachment path if provided or removed
-      if (updateData.attachment) {
-        updateValues.attachmentPath = attachmentPath;
-        updateValues.attachmentFileName = attachmentFileName;
-        updateValues.attachmentMimeType = attachmentMimeType;
-      } else if (updateData.removeAttachment) {
+        // Handle attachment path if provided or removed
+        if (updateData.attachment) {
+          updateValues.attachmentPath = preFetched.attachmentPath;
+          updateValues.attachmentFileName = preFetched.attachmentFileName;
+          updateValues.attachmentMimeType = preFetched.attachmentMimeType;
+        } else if (updateData.removeAttachment) {
         // Clear attachment metadata in DB when explicitly removing attachment
         updateValues.attachmentPath = null;
         updateValues.attachmentFileName = null;
         updateValues.attachmentMimeType = null;
       }
 
-      const [updatedTx] = tx
-        .update(transactions)
-        .set(updateValues)
-        .where(and(eq(transactions.id, id), eq(transactions.userId, ctx.user.id)))
-        .returning()
-        .all();
+        const [updatedTx] = tx
+          .update(transactions)
+          .set(updateValues)
+          .where(and(eq(transactions.id, id), eq(transactions.userId, ctx.user.id)))
+          .returning()
+          .all();
 
-      if (!updatedTx) {
-        throw new Error("Failed to update transaction");
-      }
+        if (!updatedTx) {
+          throw new Error("Failed to update transaction");
+        }
 
-      // Handle fee update: create/update/delete linked fee transaction and re-apply its balance effect
-      if (input.fee) {
-        const feeAmountInCents = Math.round(input.fee.amount * 100);
+        // Handle fee update: create/update/delete linked fee transaction and re-apply its balance effect
+        if (input.fee) {
+          const feeAmountInCents = Math.round(input.fee.amount * 100);
 
-        const sourceAccountId =
-          (updatedTx.type === "transfer" ? updatedTx.fromAccountId : updatedTx.accountId) ??
-          existing.accountId ??
-          existing.fromAccountId;
+          const sourceAccountId =
+            (updatedTx.type === "transfer" ? updatedTx.fromAccountId : updatedTx.accountId) ??
+            existing.accountId ??
+            existing.fromAccountId;
 
-        const feeAccountId = input.fee.accountId ?? sourceAccountId;
+          const feeAccountId = input.fee.accountId ?? sourceAccountId;
 
-        // feeCategoryId was pre-fetched above
-        const existingFee = existingFees[0];
+          const existingFee = preFetched.existingFees[0];
 
         if (existingFee) {
-          tx.update(transactions)
-            .set({
+            tx.update(transactions)
+              .set({
+                amount: feeAmountInCents,
+                accountId: feeAccountId,
+                categoryId: preFetched.feeCategoryId,
+              })
+              .where(eq(transactions.id, existingFee.id))
+              .run();
+          } else {
+            tx.insert(transactions).values({
+              id: createId(),
+              userId: ctx.user.id,
+              type: "expense",
               amount: feeAmountInCents,
               accountId: feeAccountId,
-              categoryId: feeCategoryId,
-            })
-            .where(eq(transactions.id, existingFee.id))
-            .run();
-        } else {
-          tx.insert(transactions).values({
-            id: createId(),
-            userId: ctx.user.id,
-            type: "expense",
-            amount: feeAmountInCents,
-            accountId: feeAccountId,
-            categoryId: feeCategoryId,
+              categoryId: preFetched.feeCategoryId,
             fromAccountId: null,
             toAccountId: null,
             date: updatedTx.date,
@@ -251,63 +230,33 @@ export const update = authedProcedure
           }).run();
         }
 
-        // Apply new fee balance effect (expense from fee account)
-        if (feeAccountId) {
-          tx.update(financialAccounts)
-            .set({
-              totalBalance: sql`${financialAccounts.totalBalance} - ${feeAmountInCents}`,
-            })
-            .where(eq(financialAccounts.id, feeAccountId))
-            .run();
-        }
-      } else if (!input.fee && existingFees.length > 0) {
-        // Fee removed: delete existing fee transactions (their balance effect was already reversed)
-        tx.delete(transactions)
-          .where(
-            and(
-              eq(transactions.userId, ctx.user.id),
-              eq(transactions.parentTransactionId, id),
-              eq(transactions.isFee, true)
+          // Apply new fee balance effect (expense from fee account)
+          if (feeAccountId) {
+            applyTransactionBalanceEffects(tx, {
+              type: "expense",
+              amount: feeAmountInCents,
+              accountId: feeAccountId,
+              fromAccountId: null,
+              toAccountId: null,
+            });
+          }
+        } else if (!input.fee && preFetched.existingFees.length > 0) {
+          // Fee removed: delete existing fee transactions (their balance effect was already reversed)
+          tx.delete(transactions)
+            .where(
+              and(
+                eq(transactions.userId, ctx.user.id),
+                eq(transactions.parentTransactionId, id),
+                eq(transactions.isFee, true)
+              )
             )
-          )
-          .run();
-      }
-
-      // Apply new balance effects for the updated main transaction
-      if (updatedTx.type === "income" && updatedTx.accountId) {
-        tx.update(financialAccounts)
-          .set({
-            totalBalance: sql`${financialAccounts.totalBalance} + ${updatedTx.amount}`,
-          })
-          .where(eq(financialAccounts.id, updatedTx.accountId))
-          .run();
-      } else if (updatedTx.type === "expense" && updatedTx.accountId) {
-        tx.update(financialAccounts)
-          .set({
-            totalBalance: sql`${financialAccounts.totalBalance} - ${updatedTx.amount}`,
-          })
-          .where(eq(financialAccounts.id, updatedTx.accountId))
-          .run();
-      } else if (updatedTx.type === "transfer") {
-        if (updatedTx.fromAccountId) {
-          tx.update(financialAccounts)
-            .set({
-              totalBalance: sql`${financialAccounts.totalBalance} - ${updatedTx.amount}`,
-            })
-            .where(eq(financialAccounts.id, updatedTx.fromAccountId))
             .run();
         }
 
-        if (updatedTx.toAccountId) {
-          tx.update(financialAccounts)
-            .set({
-              totalBalance: sql`${financialAccounts.totalBalance} + ${updatedTx.amount}`,
-            })
-            .where(eq(financialAccounts.id, updatedTx.toAccountId))
-            .run();
-        }
+        // Apply new balance effects for the updated main transaction
+        applyTransactionBalanceEffects(tx, updatedTx);
       }
-    });
+    );
 
     // Fetch the updated transaction after the transaction completes
     const updated = await ctx.db.query.transactions.findFirst({

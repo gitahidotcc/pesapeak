@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useMemo, forwardRef, type ReactNode, type ButtonHTMLAttributes } from "react";
+import { useState, useMemo, forwardRef, useEffect, type ReactNode, type ButtonHTMLAttributes } from "react";
 import {
   TrendingUp,
   TrendingDown,
   CalendarDays,
   Search,
   Sparkles,
+  Plus,
 } from "lucide-react";
 import { api } from "@/lib/trpc";
 import { type PeriodFilter } from "./period-filter-dialog";
 import { TransactionsFilterDialog } from "./transactions-filter-dialog";
 import { TransactionsList } from "./transactions-list";
+import { TransactionsSearchDialog } from "./transactions-search-dialog";
+import { AddTransactionDialog } from "./add-transaction-dialog";
+import { ActiveFilters } from "./active-filters";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -32,9 +36,9 @@ interface TransactionsPageClientProps {
   initialCategoryId?: string | null;
 }
 
-export function TransactionsPageClient({ 
+export function TransactionsPageClient({
   initialAccountId = null,
-  initialCategoryId = null 
+  initialCategoryId = null
 }: TransactionsPageClientProps) {
   // Default to current month
   const now = new Date();
@@ -45,8 +49,12 @@ export function TransactionsPageClient({
   });
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(initialAccountId);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(initialCategoryId);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const { data: accounts } = api.accounts.list.useQuery();
+  const { data: folders } = api.categories.list.useQuery();
 
   // Build query parameters based on filter
   const queryParams = useMemo(() => {
@@ -114,7 +122,20 @@ export function TransactionsPageClient({
   }, [filter, income, expenses, netAmount]);
 
   const activeFilterCount =
-    (filter.type === "all" ? 0 : 1) + (selectedAccountId ? 1 : 0);
+    (filter.type === "all" ? 0 : 1) + (selectedAccountId ? 1 : 0) + (searchQuery ? 1 : 0);
+
+  // Keyboard shortcut for search (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -137,7 +158,9 @@ export function TransactionsPageClient({
             />
           ) : null
         }
-        actionTrigger={null}
+        onSearchClick={() => setIsSearchOpen(true)}
+        searchQuery={searchQuery}
+        onAddClick={() => setIsAddDialogOpen(true)}
       />
 
       <SummaryHero
@@ -151,10 +174,54 @@ export function TransactionsPageClient({
         periodLabel={summaryPresenters.periodLabel}
       />
 
-      <TransactionsList 
-        filter={filter} 
+      <ActiveFilters
+        filter={filter}
         selectedAccountId={selectedAccountId}
         selectedCategoryId={selectedCategoryId}
+        searchQuery={searchQuery}
+        accountName={accounts?.find(acc => acc.id === selectedAccountId)?.name}
+        categoryName={folders?.flatMap(f => f.categories).find(cat => cat.id === selectedCategoryId)?.name}
+        onRemoveAccount={() => setSelectedAccountId(null)}
+        onRemoveCategory={() => setSelectedCategoryId(null)}
+        onRemoveSearch={() => setSearchQuery("")}
+        onRemovePeriod={() => {
+          const now = new Date();
+          setFilter({ type: "month", month: now.getMonth(), year: now.getFullYear() });
+        }}
+        onClearAll={() => {
+          const now = new Date();
+          setFilter({ type: "month", month: now.getMonth(), year: now.getFullYear() });
+          setSelectedAccountId(null);
+          setSelectedCategoryId(null);
+          setSearchQuery("");
+        }}
+      />
+
+      <TransactionsList
+        filter={filter}
+        selectedAccountId={selectedAccountId}
+        selectedCategoryId={selectedCategoryId}
+        searchQuery={searchQuery}
+        onAddTransaction={() => setIsAddDialogOpen(true)}
+        onClearFilters={() => {
+          setFilter({ type: "month", month: now.getMonth(), year: now.getFullYear() });
+          setSelectedAccountId(null);
+          setSelectedCategoryId(null);
+          setSearchQuery("");
+        }}
+      />
+
+      <TransactionsSearchDialog
+        open={isSearchOpen}
+        onOpenChange={setIsSearchOpen}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        resultCount={undefined}
+      />
+
+      <AddTransactionDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
       />
     </div>
   );
@@ -181,10 +248,12 @@ function getPeriodLabel(filter: PeriodFilter) {
 interface TransactionsHeaderProps {
   periodLabel: string;
   periodTrigger: ReactNode | null;
-  actionTrigger: ReactNode | null;
+  onSearchClick: () => void;
+  searchQuery: string;
+  onAddClick: () => void;
 }
 
-function TransactionsHeader({ periodLabel, periodTrigger, actionTrigger }: TransactionsHeaderProps) {
+function TransactionsHeader({ periodLabel, periodTrigger, onSearchClick, searchQuery, onAddClick }: TransactionsHeaderProps) {
   return (
     <header className="space-y-4">
       {periodTrigger ?? (
@@ -193,20 +262,30 @@ function TransactionsHeader({ periodLabel, periodTrigger, actionTrigger }: Trans
           <span>{periodLabel}</span>
         </div>
       )}
-      <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-semibold leading-tight text-foreground">Transactions</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-wrap items-end justify-between gap-4 sm:gap-6">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight text-foreground">Transactions</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Monitor all your financial activity in one place
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <HeaderIconButton
             icon={<Search className="h-5 w-5" />}
             label="Search transactions"
-            aria-disabled
+            onClick={onSearchClick}
+            badgeCount={searchQuery ? 1 : 0}
+            className="h-10 w-10 sm:h-12 sm:w-12"
           />
-          {actionTrigger}
+          <Button
+            onClick={onAddClick}
+            className="gap-2 h-10 sm:h-auto"
+            size="default"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add Transaction</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
         </div>
       </div>
     </header>
@@ -226,7 +305,7 @@ function HeaderIconButton({ icon, label, badgeCount = 0, className, ...props }: 
       aria-label={label}
       className={cn(
         "relative flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground shadow-sm transition hover:border-primary/50 hover:text-primary",
-        props.disabled || props["aria-disabled"] ? "opacity-70" : "",
+        props.disabled || props["aria-disabled"] ? "opacity-70 cursor-not-allowed" : "cursor-pointer",
         className
       )}
       {...props}
@@ -273,16 +352,16 @@ function SummaryHero({
           headlineColor
         )}
       >
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div>
-            <p className="text-sm uppercase tracking-wide text-white/80">Net for {periodLabel}</p>
-            <p className="mt-3 text-4xl font-semibold">
+        <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-6">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs sm:text-sm uppercase tracking-wide text-white/80">Net for {periodLabel}</p>
+            <p className="mt-2 sm:mt-3 text-2xl sm:text-3xl md:text-4xl font-semibold">
               {netAmount > 0 ? "+" : netAmount < 0 ? "−" : ""}
               {formatCurrency(Math.abs(netAmount), currency)}
             </p>
-            <p className="mt-2 text-sm text-white/75">{netLabel}</p>
+            <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-white/75">{netLabel}</p>
           </div>
-          <div className="flex w-full max-w-[220px] flex-col items-start gap-3 rounded-2xl bg-white/10 p-3 text-sm sm:w-auto">
+          <div className="flex w-full max-w-[220px] flex-col items-start gap-3 rounded-2xl bg-white/10 p-3 text-xs sm:text-sm sm:w-auto">
             <div className="flex w-full items-center justify-between">
               <span className="text-white/80">Income</span>
               <span className="font-semibold">{incomeShare}%</span>
@@ -302,7 +381,7 @@ function SummaryHero({
         <Sparkline positive={netPositive} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <SummaryTile
           label="Income"
           amount={formatCurrency(income, currency)}
@@ -317,7 +396,6 @@ function SummaryHero({
           icon={<TrendingDown className="h-5 w-5 text-rose-500" />}
           accent="from-rose-500/10 to-rose-600/10"
         />
-        <AnalysisTile />
       </div>
     </section>
   );
@@ -333,38 +411,19 @@ interface SummaryTileProps {
 
 function SummaryTile({ label, amount, share, icon, accent }: SummaryTileProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm">
-      <div className={cn("inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", accent)}>
+    <div className="flex flex-col gap-2 sm:gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 sm:p-4 shadow-sm">
+      <div className={cn("inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br", accent)}>
         {icon}
       </div>
       <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold">{amount}</p>
+        <p className="text-xs sm:text-sm text-muted-foreground">{label}</p>
+        <p className="text-xl sm:text-2xl font-semibold">{amount}</p>
       </div>
       <p className="text-xs font-medium text-muted-foreground">{share}% of this period</p>
     </div>
   );
 }
 
-function AnalysisTile() {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      className="flex h-full flex-col items-start justify-between gap-3 rounded-2xl border-dashed bg-muted/40 p-4 text-left hover:border-primary/50 hover:bg-muted/60"
-    >
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-        <Sparkles className="h-5 w-5" />
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-foreground">Analysis</p>
-        <p className="text-sm text-muted-foreground">
-          Deep dive into spending patterns (coming soon)
-        </p>
-      </div>
-    </Button>
-  );
-}
 
 const PeriodPill = forwardRef<HTMLButtonElement, { label: string; badgeCount?: number }>(
   ({ label, badgeCount = 0, ...props }, ref) => {
