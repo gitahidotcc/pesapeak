@@ -123,7 +123,10 @@ export function TransactionsPageClient({
   }, [filter, income, expenses, netAmount]);
 
   const activeFilterCount =
-    (filter.type === "all" ? 0 : 1) + (selectedAccountId ? 1 : 0) + (searchQuery ? 1 : 0);
+    (filter.type === "all" ? 0 : 1) + 
+    (selectedAccountId ? 1 : 0) + 
+    (selectedCategoryId ? 1 : 0) + 
+    (searchQuery ? 1 : 0);
 
   // Keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
@@ -220,6 +223,7 @@ export function TransactionsPageClient({
         searchQuery={searchQuery}
         onAddTransaction={() => setIsAddDialogOpen(true)}
         onClearFilters={() => {
+          const now = new Date();
           setFilter({ type: "month", month: now.getMonth(), year: now.getFullYear() });
           setSelectedAccountId(null);
           setSelectedCategoryId(null);

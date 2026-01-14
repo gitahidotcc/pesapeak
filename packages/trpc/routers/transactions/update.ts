@@ -50,7 +50,9 @@ export const update = authedProcedure
     }
 
     // Guard: fees only for expense/transfer
-    if (input.fee && !(existing.type === "expense" || existing.type === "transfer")) {
+    // Check the resulting type after update (input.type ?? existing.type)
+    const resultingType = input.type ?? existing.type;
+    if (input.fee && !(resultingType === "expense" || resultingType === "transfer")) {
       throw new Error("Fees are only supported for expense and transfer transactions");
     }
 
