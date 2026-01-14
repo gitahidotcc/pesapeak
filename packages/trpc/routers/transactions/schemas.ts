@@ -55,8 +55,14 @@ export const transactionFiltersSchema = z.object({
   accountId: z.string().optional(),
   categoryId: z.string().optional(),
   type: z.enum(["income", "expense", "transfer"]).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "startDate must be in YYYY-MM-DD format")
+    .optional(),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "endDate must be in YYYY-MM-DD format")
+    .optional(),
 });
 
 export const listInputSchema = transactionFiltersSchema.extend({

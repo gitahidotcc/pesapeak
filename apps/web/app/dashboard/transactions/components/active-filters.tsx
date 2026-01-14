@@ -1,7 +1,6 @@
 "use client";
 
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
 
 interface ActiveFiltersProps {

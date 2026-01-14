@@ -60,24 +60,32 @@ export const update = authedProcedure
     let attachmentPath: string | null = null;
     let attachmentFileName: string | null = null;
     let attachmentMimeType: string | null = null;
+    let oldAttachmentPath: string | null = null;
 
-    if (updateData.attachment || updateData.removeAttachment) {
-      // Delete old attachment file if it exists
-      if (existing.attachmentPath) {
-        try {
-          await fs.unlink(existing.attachmentPath);
-        } catch (error) {
-          // Ignore errors if file doesn't exist
-          console.warn("Failed to delete old attachment:", error);
-        }
-      }
+    // Store old attachment path for cleanup after new attachment is saved
+    if (updateData.attachment && existing.attachmentPath) {
+      oldAttachmentPath = existing.attachmentPath;
     }
 
+    // Save new attachment first (if provided) before deleting old one
     if (updateData.attachment) {
       const saved = await saveAttachment(ctx.user.id, id, updateData.attachment);
       attachmentPath = saved.path;
       attachmentFileName = saved.fileName;
       attachmentMimeType = saved.mimeType;
+    }
+
+    // Delete old attachment only after new one is successfully saved (or if explicitly removing)
+    if (oldAttachmentPath || (updateData.removeAttachment && existing.attachmentPath)) {
+      const pathToDelete = oldAttachmentPath || existing.attachmentPath;
+      if (pathToDelete) {
+        try {
+          await fs.unlink(pathToDelete);
+        } catch (error) {
+          // Ignore errors if file doesn't exist
+          console.warn("Failed to delete old attachment:", error);
+        }
+      }
     }
 
     // Wrap all database operations in a transaction for atomicity

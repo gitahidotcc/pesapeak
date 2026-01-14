@@ -1,5 +1,5 @@
-import { and, eq, gte, lte, or, sql, like } from "drizzle-orm";
-import { transactions, financialAccounts, categories } from "@pesapeak/db/schema";
+import { eq, gte, lte, or, sql } from "drizzle-orm";
+import { transactions, financialAccounts } from "@pesapeak/db/schema";
 import type { AuthedContext } from "../../index";
 import type { PesapeakDBTransaction, DB } from "@pesapeak/db";
 import fs from "node:fs/promises";
@@ -80,14 +80,38 @@ export function buildTransactionConditions(
   }
 
   if (filters.startDate) {
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.startDate)) {
+      throw new Error(`Invalid startDate format: ${filters.startDate}. Expected YYYY-MM-DD format.`);
+    }
     const [year, month, day] = filters.startDate.split("-").map(Number);
+    // Validate parsed values are valid numbers
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      throw new Error(`Invalid startDate: ${filters.startDate}. Could not parse date components.`);
+    }
     const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    // Validate the resulting date is valid
+    if (isNaN(startDate.getTime())) {
+      throw new Error(`Invalid startDate: ${filters.startDate}. Date is not valid.`);
+    }
     conditions.push(gte(transactions.date, startDate));
   }
 
   if (filters.endDate) {
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.endDate)) {
+      throw new Error(`Invalid endDate format: ${filters.endDate}. Expected YYYY-MM-DD format.`);
+    }
     const [year, month, day] = filters.endDate.split("-").map(Number);
+    // Validate parsed values are valid numbers
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      throw new Error(`Invalid endDate: ${filters.endDate}. Could not parse date components.`);
+    }
     const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    // Validate the resulting date is valid
+    if (isNaN(endDate.getTime())) {
+      throw new Error(`Invalid endDate: ${filters.endDate}. Date is not valid.`);
+    }
     conditions.push(lte(transactions.date, endDate));
   }
 

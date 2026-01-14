@@ -153,6 +153,8 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
       await utils.transactions.list.invalidate(undefined);
       // Invalidate summary query to update totals
       await utils.transactions.summary.invalidate(undefined);
+      // Invalidate periods query to update month summaries
+      await utils.transactions.periods.invalidate(undefined);
       // Refresh account balances
       await utils.accounts.list.invalidate();
       resetForm();
@@ -170,6 +172,8 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
       await utils.transactions.list.invalidate(undefined);
       // Invalidate summary query to update totals
       await utils.transactions.summary.invalidate(undefined);
+      // Invalidate periods query to update month summaries
+      await utils.transactions.periods.invalidate(undefined);
       // Refresh account balances
       await utils.accounts.list.invalidate();
       resetForm();

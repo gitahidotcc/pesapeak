@@ -148,6 +148,8 @@ export function TransactionDetailsDialog({
       await utils.transactions.list.invalidate(undefined);
       // Invalidate summary query to update totals
       await utils.transactions.summary.invalidate(undefined);
+      // Invalidate periods query to update month summaries
+      await utils.transactions.periods.invalidate(undefined);
       // Refresh account balances
       await utils.accounts.list.invalidate();
       setIsConfirmOpen(false);
