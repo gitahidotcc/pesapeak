@@ -63,7 +63,7 @@ export function TransactionsSearchDialog({
             <Input
               data-search-input
               type="text"
-              placeholder="Search by notes, description..."
+              placeholder="Search by notes, category, account..."
               value={localQuery}
               onChange={(e) => handleQueryChange(e.target.value)}
               className="pl-10 pr-10 h-11"
@@ -93,8 +93,8 @@ export function TransactionsSearchDialog({
           <div className="text-xs text-muted-foreground space-y-1">
             <p className="font-medium">Search tips:</p>
             <ul className="list-disc list-inside space-y-0.5 ml-2">
-              <li>Search by transaction notes or description</li>
-              <li>Use keywords to find specific transactions</li>
+              <li>Search by transaction notes, category names, or account names</li>
+              <li>Use keywords to find specific transactions quickly</li>
             </ul>
           </div>
         </div>

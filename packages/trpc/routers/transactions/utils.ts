@@ -91,13 +91,8 @@ export function buildTransactionConditions(
     conditions.push(lte(transactions.date, endDate));
   }
 
-  if (filters.search && filters.search.trim()) {
-    const searchTerm = `%${filters.search.trim()}%`;
-    // Search in notes (case-insensitive) - SQLite LIKE is case-insensitive by default for ASCII
-    conditions.push(
-      like(transactions.notes, searchTerm)
-    );
-  }
+  // Note: Search is now handled in list.ts using LEFT JOINs for better performance
+  // This function no longer handles search to avoid conflicts with the relational query API
 
   return conditions;
 }

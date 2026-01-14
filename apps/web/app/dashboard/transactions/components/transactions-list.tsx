@@ -18,6 +18,7 @@ interface TransactionsListProps {
   searchQuery?: string;
   onAddTransaction?: () => void;
   onClearFilters?: () => void;
+  onResultCountChange?: (count: number | undefined) => void;
 }
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
@@ -67,6 +68,7 @@ export function TransactionsList({
   searchQuery = "",
   onAddTransaction,
   onClearFilters,
+  onResultCountChange,
 }: TransactionsListProps) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -133,6 +135,20 @@ export function TransactionsList({
       refetchOnWindowFocus: false,
     }
   );
+
+  // Calculate total result count across all pages
+  const totalResultCount = useMemo(() => {
+    if (!data?.pages) return undefined;
+    const allTransactions = data.pages.flatMap((page) => page.items);
+    return allTransactions.length;
+  }, [data]);
+
+  // Notify parent of result count changes
+  useEffect(() => {
+    if (onResultCountChange) {
+      onResultCountChange(totalResultCount);
+    }
+  }, [totalResultCount, onResultCountChange]);
 
   const flatItems = useMemo(() => {
     if (!data?.pages) return [];

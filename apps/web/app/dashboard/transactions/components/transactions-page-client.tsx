@@ -13,7 +13,7 @@ import { api } from "@/lib/trpc";
 import { type PeriodFilter } from "./period-filter-dialog";
 import { TransactionsFilterDialog } from "./transactions-filter-dialog";
 import { TransactionsList } from "./transactions-list";
-import { TransactionsSearchDialog } from "./transactions-search-dialog";
+import { TransactionsSearchBar } from "./transactions-search-bar";
 import { AddTransactionDialog } from "./add-transaction-dialog";
 import { ActiveFilters } from "./active-filters";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ export function TransactionsPageClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [resultCount, setResultCount] = useState<number | undefined>(undefined);
 
   const { data: accounts } = api.accounts.list.useQuery();
   const { data: folders } = api.categories.list.useQuery();
@@ -158,9 +159,24 @@ export function TransactionsPageClient({
             />
           ) : null
         }
-        onSearchClick={() => setIsSearchOpen(true)}
+        onSearchClick={() => {
+          setIsSearchOpen((prev) => !prev);
+        }}
         searchQuery={searchQuery}
         onAddClick={() => setIsAddDialogOpen(true)}
+      />
+
+      <TransactionsSearchBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        isOpen={isSearchOpen}
+        onClose={() => {
+          setIsSearchOpen(false);
+          if (!searchQuery) {
+            setSearchQuery("");
+          }
+        }}
+        resultCount={resultCount}
       />
 
       <SummaryHero
@@ -209,15 +225,9 @@ export function TransactionsPageClient({
           setSelectedCategoryId(null);
           setSearchQuery("");
         }}
+        onResultCountChange={setResultCount}
       />
 
-      <TransactionsSearchDialog
-        open={isSearchOpen}
-        onOpenChange={setIsSearchOpen}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        resultCount={undefined}
-      />
 
       <AddTransactionDialog
         open={isAddDialogOpen}
@@ -341,46 +351,10 @@ function SummaryHero({
   periodLabel,
 }: SummaryHeroProps) {
   const netPositive = netAmount >= 0;
-  const headlineColor = netPositive ? "from-emerald-500 to-emerald-600" : "from-rose-500 to-rose-600";
 
   return (
-    <section className="space-y-4">
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-3xl bg-gradient-to-br p-6 text-white shadow-lg",
-          headlineColor
-        )}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-6">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs sm:text-sm uppercase tracking-wide text-white/80">Net for {periodLabel}</p>
-            <p className="mt-2 sm:mt-3 text-2xl sm:text-3xl md:text-4xl font-semibold">
-              {netAmount > 0 ? "+" : netAmount < 0 ? "−" : ""}
-              {formatCurrency(Math.abs(netAmount), currency)}
-            </p>
-            <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-white/75">{netLabel}</p>
-          </div>
-          <div className="flex w-full max-w-[220px] flex-col items-start gap-3 rounded-2xl bg-white/10 p-3 text-xs sm:text-sm sm:w-auto">
-            <div className="flex w-full items-center justify-between">
-              <span className="text-white/80">Income</span>
-              <span className="font-semibold">{incomeShare}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
-              <span
-                className="block h-full rounded-full bg-white"
-                style={{ width: `${incomeShare}%` }}
-              />
-            </div>
-            <div className="flex w-full items-center justify-between text-white/80">
-              <span>Expenses</span>
-              <span className="font-semibold">{expenseShare}%</span>
-            </div>
-          </div>
-        </div>
-        <Sparkline positive={netPositive} />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
+    <section>
+      <div className="grid gap-4 sm:grid-cols-3">
         <SummaryTile
           label="Income"
           amount={formatCurrency(income, currency)}
@@ -395,6 +369,22 @@ function SummaryHero({
           icon={<TrendingDown className="h-5 w-5 text-rose-500" />}
           accent="from-rose-500/10 to-rose-600/10"
         />
+        <SummaryTile
+          label="Net"
+          amount={formatCurrency(Math.abs(netAmount), currency)}
+          share={0}
+          icon={
+            netPositive ? (
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+            ) : (
+              <TrendingDown className="h-5 w-5 text-rose-500" />
+            )
+          }
+          accent={netPositive ? "from-emerald-500/10 to-emerald-600/10" : "from-rose-500/10 to-rose-600/10"}
+          netAmount={netAmount}
+          netLabel={netLabel}
+          showNet={true}
+        />
       </div>
     </section>
   );
@@ -406,19 +396,44 @@ interface SummaryTileProps {
   share: number;
   icon: ReactNode;
   accent: string;
+  netAmount?: number;
+  netLabel?: string;
+  showNet?: boolean;
 }
 
-function SummaryTile({ label, amount, share, icon, accent }: SummaryTileProps) {
+function SummaryTile({ label, amount, share, icon, accent, netAmount, netLabel, showNet }: SummaryTileProps) {
+  const isNet = showNet && netAmount !== undefined;
+  const isPositive = isNet && netAmount >= 0;
+  
   return (
-    <div className="flex flex-col gap-2 sm:gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 sm:p-4 shadow-sm">
-      <div className={cn("inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gradient-to-br", accent)}>
-        {icon}
+    <div className="flex flex-col gap-3 sm:gap-4 rounded-2xl border border-border/60 bg-card/70 p-4 sm:p-5 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div className={cn("inline-flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-gradient-to-br", accent)}>
+          {icon}
+        </div>
+        {!isNet && share > 0 && (
+          <div className="text-right">
+            <p className="text-xs font-medium text-muted-foreground">{share}%</p>
+            <p className="text-[10px] text-muted-foreground/70">of period</p>
+          </div>
+        )}
       </div>
-      <div>
-        <p className="text-xs sm:text-sm text-muted-foreground">{label}</p>
-        <p className="text-xl sm:text-2xl font-semibold">{amount}</p>
+      <div className="space-y-1">
+        <p className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className={cn(
+          "text-2xl sm:text-3xl font-bold tabular-nums",
+          isNet && (isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")
+        )}>
+          {isNet && netAmount !== undefined && (netAmount > 0 ? "+" : netAmount < 0 ? "−" : "")}
+          {amount}
+        </p>
+        {isNet && netLabel && (
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">{netLabel}</p>
+        )}
+        {!isNet && (
+          <p className="text-xs text-muted-foreground/70">{share}% of this period</p>
+        )}
       </div>
-      <p className="text-xs font-medium text-muted-foreground">{share}% of this period</p>
     </div>
   );
 }
@@ -447,23 +462,4 @@ const PeriodPill = forwardRef<HTMLButtonElement, { label: string; badgeCount?: n
 );
 PeriodPill.displayName = "PeriodPill";
 
-function Sparkline({ positive }: { positive: boolean }) {
-  const path = positive
-    ? "M5 45 L35 20 L60 30 L85 10 L110 25 L140 5 L155 20"
-    : "M5 15 L35 30 L60 10 L85 35 L110 15 L140 40 L155 25";
-
-  return (
-    <svg viewBox="0 0 160 50" className="mt-6 h-16 w-full text-white/70" role="presentation">
-      <path
-        d={path}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)]"
-      />
-    </svg>
-  );
-}
 
