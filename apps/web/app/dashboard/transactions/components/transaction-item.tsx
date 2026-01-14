@@ -57,6 +57,7 @@ export interface TransactionItemProps {
     formatCurrency: (amount: number, currency?: string) => string;
     formatTime: (time: string | null) => string;
     currency: string;
+    isFee?: boolean;
 }
 
 export function TransactionItem({
@@ -67,6 +68,7 @@ export function TransactionItem({
     formatCurrency,
     formatTime,
     currency,
+    isFee = false,
 }: TransactionItemProps) {
     const isIncome = transaction.type === "income";
     const isExpense = transaction.type === "expense";
@@ -95,20 +97,29 @@ export function TransactionItem({
     // Render main transaction
     return (
         <div className="group relative">
+            {isFee && (
+                <div className="absolute -left-4 sm:-left-6 top-0 bottom-1/2 w-px bg-border/30" />
+            )}
             <div
                 onClick={onClick}
-                className="flex cursor-pointer items-center gap-3 sm:gap-4 rounded-xl border border-border/40 bg-card/60 p-3 sm:p-3.5 transition-all hover:border-border hover:bg-muted/60 hover:shadow-md active:scale-[0.99] touch-manipulation"
+                className={cn(
+                    "flex cursor-pointer items-center gap-3 sm:gap-4 rounded-xl border border-border/40 bg-card/60 p-3 sm:p-3.5 transition-all hover:border-border hover:bg-muted/60 hover:shadow-md active:scale-[0.99] touch-manipulation",
+                    isFee && "border-l-2 border-l-muted-foreground/30 bg-muted/10"
+                )}
             >
                 {/* Icon */}
                 <div
                     className={cn(
-                        "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl border border-border/50 shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md",
-                        categoryColor ? undefined : isIncome && "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-                        categoryColor ? undefined : isExpense && "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400",
-                        categoryColor ? undefined : isTransfer && "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                        "flex shrink-0 items-center justify-center rounded-2xl border border-border/50 shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md",
+                        isFee 
+                            ? "h-8 w-8 sm:h-9 sm:w-9 bg-muted-foreground/10 text-muted-foreground"
+                            : "h-10 w-10 sm:h-12 sm:w-12",
+                        !isFee && categoryColor ? undefined : !isFee && isIncome && "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+                        !isFee && categoryColor ? undefined : !isFee && isExpense && "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400",
+                        !isFee && categoryColor ? undefined : !isFee && isTransfer && "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
                     )}
                     style={
-                        categoryColor
+                        !isFee && categoryColor
                             ? {
                                 backgroundColor: `${categoryColor}15`,
                                 color: categoryColor,
@@ -117,26 +128,38 @@ export function TransactionItem({
                             : undefined
                     }
                 >
-                    <CategoryIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    {isFee ? (
+                        <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-60" />
+                    ) : (
+                        <CategoryIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    )}
                 </div>
 
                 {/* Content */}
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
                     <div className="flex items-center justify-between gap-4">
-                        <span className="truncate font-medium text-foreground">
-                            {isTransfer
-                                ? `Transfer to ${getAccountName(transaction.toAccountId)}`
-                                : transaction.notes || getCategoryName(transaction.categoryId)}
+                        <span className={cn(
+                            "truncate font-medium",
+                            isFee ? "text-sm text-muted-foreground" : "text-foreground"
+                        )}>
+                            {isFee 
+                                ? transaction.notes || getCategoryName(transaction.categoryId)
+                                : isTransfer
+                                    ? `Transfer to ${getAccountName(transaction.toAccountId)}`
+                                    : transaction.notes || getCategoryName(transaction.categoryId)}
                         </span>
                         <span
                             className={cn(
-                                "whitespace-nowrap text-base font-semibold",
-                                isIncome && "text-emerald-600 dark:text-emerald-400",
-                                isExpense && "text-foreground",
-                                isTransfer && "text-foreground"
+                                "whitespace-nowrap tabular-nums",
+                                isFee 
+                                    ? "text-sm sm:text-base font-semibold text-muted-foreground"
+                                    : "text-lg sm:text-xl font-bold",
+                                !isFee && isIncome && "text-emerald-600 dark:text-emerald-400",
+                                !isFee && isExpense && "text-foreground",
+                                !isFee && isTransfer && "text-foreground"
                             )}
                         >
-                            {isIncome && "+"}
+                            {!isFee && isIncome && "+"}
                             {isExpense && "-"}
                             {formatCurrency(transaction.amount, currency)}
                         </span>

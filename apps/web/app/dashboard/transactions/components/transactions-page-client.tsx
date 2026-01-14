@@ -384,7 +384,7 @@ function SummaryHero({
               <TrendingDown className="h-5 w-5 text-rose-500" />
             )
           }
-          accent={netPositive ? "from-emerald-500/10 to-emerald-600/10" : "from-rose-500/10 to-rose-600/10"}
+          accent="from-muted/50 to-muted/30"
           netAmount={netAmount}
           netLabel={netLabel}
           showNet={true}

@@ -59,7 +59,7 @@ const PAGE_SIZE = 50;
 
 type ListItem =
   | { type: "header"; date: string; count: number; total: number; id: string }
-  | { type: "transaction"; data: Transaction; id: string };
+  | { type: "transaction"; data: Transaction; id: string; isFee?: boolean };
 
 export function TransactionsList({
   filter,
@@ -171,13 +171,29 @@ export function TransactionsList({
 
     sortedDates.forEach((date) => {
       const txs = grouped[date]!;
-      // Sort within day
-      txs.sort((a, b) => {
+      
+      // Separate parent transactions from fees
+      const parentTxs = txs.filter((tx) => !tx.isFee);
+      const feeTxs = txs.filter((tx) => tx.isFee);
+      
+      // Create a map of parent transaction IDs to their fees
+      const feesByParent = new Map<string, Transaction[]>();
+      feeTxs.forEach((fee) => {
+        if (fee.parentTransactionId) {
+          if (!feesByParent.has(fee.parentTransactionId)) {
+            feesByParent.set(fee.parentTransactionId, []);
+          }
+          feesByParent.get(fee.parentTransactionId)!.push(fee);
+        }
+      });
+      
+      // Sort parent transactions within day
+      parentTxs.sort((a, b) => {
         if (a.time && b.time) return b.time.localeCompare(a.time);
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
-      // Calculate total
+      // Calculate total (including fees)
       const total = txs.reduce((sum, tx) => {
         if (tx.type === "income") return sum + tx.amount;
         if (tx.type === "expense") return sum - tx.amount;
@@ -187,16 +203,34 @@ export function TransactionsList({
       items.push({
         type: "header",
         date,
-        count: txs.length,
+        count: parentTxs.length, // Count only parent transactions
         total,
         id: `header-${date}`,
       });
 
-      txs.forEach((tx) => {
+      // Add parent transactions with their fees nested
+      parentTxs.forEach((tx) => {
         items.push({
           type: "transaction",
           data: tx,
           id: tx.id,
+          isFee: false,
+        });
+        
+        // Add fees for this parent transaction, sorted by time
+        const fees = feesByParent.get(tx.id) || [];
+        fees.sort((a, b) => {
+          if (a.time && b.time) return b.time.localeCompare(a.time);
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        
+        fees.forEach((fee) => {
+          items.push({
+            type: "transaction",
+            data: fee,
+            id: fee.id,
+            isFee: true,
+          });
         });
       });
     });
@@ -353,7 +387,7 @@ export function TransactionsList({
                   </div>
                 </div>
               ) : (
-                <div className="py-1">
+                <div className={cn("py-1", item.isFee && "pl-4 sm:pl-6")}>
                   <TransactionItem
                     transaction={item.data}
                     onClick={() => {
@@ -365,6 +399,7 @@ export function TransactionsList({
                     formatCurrency={formatCurrency}
                     formatTime={formatTime}
                     currency={accounts?.[0]?.currency || "USD"}
+                    isFee={item.isFee}
                   />
                 </div>
               )}
