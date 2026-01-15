@@ -141,10 +141,17 @@ export function TransactionDetailsDialog({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const utils = api.useUtils();
   const deleteTransaction = api.transactions.delete.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Transaction deleted successfully");
-      utils.transactions.list.invalidate();
-      utils.accounts.list.invalidate();
+      // Invalidate all transaction list queries (including infinite queries)
+      // This will mark them as stale and trigger automatic refetch
+      await utils.transactions.list.invalidate(undefined);
+      // Invalidate summary query to update totals
+      await utils.transactions.summary.invalidate(undefined);
+      // Invalidate periods query to update month summaries
+      await utils.transactions.periods.invalidate(undefined);
+      // Refresh account balances
+      await utils.accounts.list.invalidate();
       setIsConfirmOpen(false);
       onOpenChange(false);
     },
@@ -205,250 +212,272 @@ export function TransactionDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] overflow-y-auto p-0">
-        {/* Header with Edit and Delete buttons */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-6 py-4">
-          <h2 className="text-2xl font-semibold">Transaction Details</h2>
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[95vh] overflow-hidden p-0 flex flex-col">
+        {/* Header with actions */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/95 backdrop-blur-sm px-4 sm:px-6 py-3 sm:py-4">
+          <h2 className="text-lg sm:text-xl font-semibold">Transaction Details</h2>
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={handleEdit}
-              className="gap-2"
+              className="gap-1.5 sm:gap-2 h-8 sm:h-9"
             >
-              <Edit className="h-4 w-4" />
-              Edit
+              <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Edit</span>
             </Button>
             <Button
-              variant="destructive"
+              variant="ghost"
               size="sm"
               onClick={() => setIsConfirmOpen(true)}
               disabled={isDeleting}
-              className="gap-2"
+              className="gap-1.5 sm:gap-2 h-8 sm:h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
             >
-              <Trash2 className="h-4 w-4" />
-              {isDeleting ? "Deleting..." : "Delete"}
+              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">{isDeleting ? "Deleting..." : "Delete"}</span>
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onOpenChange(false)}
+              className="h-8 w-8 sm:h-9 sm:w-9"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-6 space-y-6">
-          {/* Amount and Icon */}
-          <div className="flex items-center gap-4">
-            <div
-              className={cn(
-                "flex h-16 w-16 items-center justify-center rounded-xl",
-                categoryColor
-                  ? undefined
-                  : isIncome && "bg-green-100 dark:bg-green-900/30",
-                categoryColor
-                  ? undefined
-                  : isExpense && "bg-red-100 dark:bg-red-900/30",
-                categoryColor
-                  ? undefined
-                  : isTransfer && "bg-blue-100 dark:bg-blue-900/30"
-              )}
-              style={
-                categoryColor
-                  ? {
-                      backgroundColor: `${categoryColor}20`,
-                    }
-                  : undefined
-              }
-            >
-              <CategoryIcon
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Hero section - Amount and Icon */}
+          <div className={cn(
+            "relative overflow-hidden px-4 sm:px-6 py-8 sm:py-10",
+            categoryColor
+              ? undefined
+              : isIncome && "bg-gradient-to-br from-emerald-500/10 to-emerald-600/5",
+            categoryColor
+              ? undefined
+              : isExpense && "bg-gradient-to-br from-rose-500/10 to-rose-600/5",
+            categoryColor
+              ? undefined
+              : isTransfer && "bg-gradient-to-br from-blue-500/10 to-blue-600/5"
+          )}
+          style={
+            categoryColor
+              ? {
+                  background: `linear-gradient(to bottom right, ${categoryColor}15, ${categoryColor}08)`,
+                }
+              : undefined
+          }>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+              <div
                 className={cn(
-                  "h-8 w-8",
+                  "flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl border-2 shadow-lg",
                   categoryColor
                     ? undefined
-                    : isIncome && "text-green-600 dark:text-green-400",
+                    : isIncome && "bg-emerald-500/20 border-emerald-500/30",
                   categoryColor
                     ? undefined
-                    : isExpense && "text-red-600 dark:text-red-400",
+                    : isExpense && "bg-rose-500/20 border-rose-500/30",
                   categoryColor
                     ? undefined
-                    : isTransfer && "text-blue-600 dark:text-blue-400"
+                    : isTransfer && "bg-blue-500/20 border-blue-500/30"
                 )}
                 style={
                   categoryColor
                     ? {
-                        color: categoryColor,
+                        backgroundColor: `${categoryColor}20`,
+                        borderColor: `${categoryColor}40`,
                       }
                     : undefined
                 }
-              />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm text-muted-foreground">Amount</div>
-              <div
-                className={cn(
-                  "text-3xl font-bold",
-                  isIncome && "text-green-600 dark:text-green-400",
-                  isExpense && "text-red-600 dark:text-red-400",
-                  isTransfer && "text-blue-600 dark:text-blue-400"
-                )}
               >
-                {isIncome && "+"}
-                {isExpense && "-"}
-                {formatCurrency(transaction.amount, getCurrency())}
+                <CategoryIcon
+                  className={cn(
+                    "h-10 w-10 sm:h-12 sm:w-12",
+                    categoryColor
+                      ? undefined
+                      : isIncome && "text-emerald-600 dark:text-emerald-400",
+                    categoryColor
+                      ? undefined
+                      : isExpense && "text-rose-600 dark:text-rose-400",
+                    categoryColor
+                      ? undefined
+                      : isTransfer && "text-blue-600 dark:text-blue-400"
+                  )}
+                  style={
+                    categoryColor
+                      ? {
+                          color: categoryColor,
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <div className="text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+                  Amount
+                </div>
+                <div
+                  className={cn(
+                    "text-4xl sm:text-5xl font-bold tabular-nums",
+                    isIncome && "text-emerald-600 dark:text-emerald-400",
+                    isExpense && "text-rose-600 dark:text-rose-400",
+                    isTransfer && "text-blue-600 dark:text-blue-400"
+                  )}
+                >
+                  {isIncome && "+"}
+                  {isExpense && "-"}
+                  {formatCurrency(transaction.amount, getCurrency())}
+                </div>
+                <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs sm:text-sm font-medium">
+                  <span className="capitalize">{transaction.type}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Transaction Type */}
-          <div>
-            <div className="text-sm font-semibold text-muted-foreground mb-2">
-              Transaction Type
-            </div>
-            <div className="text-lg font-medium capitalize">{transaction.type}</div>
-          </div>
-
-          {/* Assignment Details */}
-          <div className="space-y-3">
-            <div className="text-sm font-semibold text-muted-foreground">
-              Assignment
-            </div>
-            {isTransfer ? (
-              <div className="space-y-3">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">From Account</div>
-                  <div className="text-base font-medium">{getAccountName(transaction.fromAccountId)}</div>
+          {/* Details sections */}
+          <div className="px-4 sm:px-6 py-6 space-y-4">
+            {/* Assignment Details Card */}
+            <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:p-5 space-y-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Assignment
+              </h3>
+              {isTransfer ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">From Account</div>
+                    <div className="text-base sm:text-lg font-semibold">{getAccountName(transaction.fromAccountId)}</div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">To Account</div>
+                    <div className="text-base sm:text-lg font-semibold">{getAccountName(transaction.toAccountId)}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">To Account</div>
-                  <div className="text-base font-medium">{getAccountName(transaction.toAccountId)}</div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Account</div>
-                  <div className="text-base font-medium">{getAccountName(transaction.accountId)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Category</div>
-                  <div className="text-base font-medium">{getCategoryName(transaction.categoryId)}</div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Date & Time */}
-          <div className="space-y-3">
-            <div className="text-sm font-semibold text-muted-foreground">
-              Date & Time
-            </div>
-            <div>
-              <div className="text-base font-medium">{formatDate(transaction.date)}</div>
-              {transaction.time && (
-                <div className="text-sm text-muted-foreground mt-1">
-                  {formatTime(transaction.time)}
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">Account</div>
+                    <div className="text-base sm:text-lg font-semibold">{getAccountName(transaction.accountId)}</div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">Category</div>
+                    <div className="text-base sm:text-lg font-semibold">{getCategoryName(transaction.categoryId)}</div>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Notes */}
-          {transaction.notes && (
-            <div className="space-y-3">
-              <div className="text-sm font-semibold text-muted-foreground">
-                Notes
+            {/* Date & Time Card */}
+            <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:p-5 space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Date & Time
+              </h3>
+              <div className="space-y-1">
+                <div className="text-base sm:text-lg font-semibold">{formatDate(transaction.date)}</div>
+                {transaction.time && (
+                  <div className="text-sm text-muted-foreground">
+                    {formatTime(transaction.time)}
+                  </div>
+                )}
               </div>
-              <div className="text-base whitespace-pre-wrap">{transaction.notes}</div>
             </div>
-          )}
 
-          {/* Attachment */}
-          {transaction.attachmentPath && transaction.attachmentFileName && (() => {
-            // Extract userId and filename from attachmentPath
-            // Path format: dataDir/transactions/{userId}/{filename}
-            // Handle both Windows (\) and Unix (/) path separators
-            const normalizedPath = transaction.attachmentPath.replace(/\\/g, "/");
-            const pathParts = normalizedPath.split("/");
-            const transactionsIndex = pathParts.findIndex((part) => part === "transactions");
-            if (transactionsIndex === -1 || transactionsIndex + 2 >= pathParts.length) {
-              return null;
-            }
-            const userId = pathParts[transactionsIndex + 1];
-            const filename = pathParts[transactionsIndex + 2];
-            const fileUrl = `/api/files/transactions/${userId}/${filename}`;
-            
-            const isImage = transaction.attachmentMimeType?.startsWith("image/");
-            const isPdf = transaction.attachmentMimeType === "application/pdf";
-            const canPreview = isImage || isPdf;
+            {/* Notes Card */}
+            {transaction.notes && (
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:p-5 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Notes
+                </h3>
+                <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{transaction.notes}</div>
+              </div>
+            )}
 
-            return (
-              <div className="space-y-3">
-                <div className="text-sm font-semibold text-muted-foreground">
-                  Attachment
-                </div>
-                
-                {canPreview ? (
-                  <div className="space-y-3">
-                    {isImage && (
-                      <div className="rounded-lg border border-border overflow-hidden bg-muted/20">
-                        <img
-                          src={fileUrl}
-                          alt={transaction.attachmentFileName}
-                          className="w-full h-auto max-h-96 object-contain"
-                        />
+            {/* Attachment Card */}
+            {transaction.attachmentPath && transaction.attachmentFileName && (() => {
+              // Extract userId and filename from attachmentPath
+              // Path format: dataDir/transactions/{userId}/{filename}
+              // Handle both Windows (\) and Unix (/) path separators
+              const normalizedPath = transaction.attachmentPath.replace(/\\/g, "/");
+              const pathParts = normalizedPath.split("/");
+              const transactionsIndex = pathParts.findIndex((part) => part === "transactions");
+              if (transactionsIndex === -1 || transactionsIndex + 2 >= pathParts.length) {
+                return null;
+              }
+              const userId = pathParts[transactionsIndex + 1];
+              const filename = pathParts[transactionsIndex + 2];
+              const fileUrl = `/api/files/transactions/${userId}/${filename}`;
+              
+              const isImage = transaction.attachmentMimeType?.startsWith("image/");
+              const isPdf = transaction.attachmentMimeType === "application/pdf";
+              const canPreview = isImage || isPdf;
+
+              return (
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:p-5 space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Attachment
+                  </h3>
+                  
+                  {canPreview ? (
+                    <div className="space-y-3">
+                      {isImage && (
+                        <div className="rounded-lg border border-border/60 overflow-hidden bg-muted/20">
+                          <img
+                            src={fileUrl}
+                            alt={transaction.attachmentFileName}
+                            className="w-full h-auto max-h-96 object-contain"
+                          />
+                        </div>
+                      )}
+                      {isPdf && (
+                        <div className="rounded-lg border border-border/60 overflow-hidden bg-muted/20">
+                          <iframe
+                            src={fileUrl}
+                            title={transaction.attachmentFileName}
+                            className="w-full h-96"
+                          />
+                        </div>
+                      )}
+                      <div className="text-sm">
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-2"
+                        >
+                          {transaction.attachmentFileName}
+                          <span className="text-xs text-muted-foreground">(Open in new tab)</span>
+                        </a>
                       </div>
-                    )}
-                    {isPdf && (
-                      <div className="rounded-lg border border-border overflow-hidden bg-muted/20">
-                        <iframe
-                          src={fileUrl}
-                          title={transaction.attachmentFileName}
-                          className="w-full h-96"
-                        />
-                      </div>
-                    )}
-                    <div className="text-sm">
+                    </div>
+                  ) : (
+                    <div className="text-sm sm:text-base">
                       <a
                         href={fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline inline-flex items-center gap-2"
+                        className="text-primary hover:underline"
                       >
                         {transaction.attachmentFileName}
-                        <span className="text-xs text-muted-foreground">(Open in new tab)</span>
                       </a>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-base">
-                    <a
-                      href={fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {transaction.attachmentFileName}
-                    </a>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+                  )}
+                </div>
+              );
+            })()}
 
-          {/* Metadata */}
-          <div className="pt-4 border-t border-border space-y-2">
-            <div className="text-xs text-muted-foreground">
-              Created: {new Date(transaction.createdAt).toLocaleString()}
-            </div>
-            {transaction.updatedAt !== transaction.createdAt && (
+            {/* Metadata */}
+            <div className="pt-2 pb-4 border-t border-border/60 space-y-1.5">
               <div className="text-xs text-muted-foreground">
-                Updated: {new Date(transaction.updatedAt).toLocaleString()}
+                Created: {new Date(transaction.createdAt).toLocaleString()}
               </div>
-            )}
+              {transaction.updatedAt !== transaction.createdAt && (
+                <div className="text-xs text-muted-foreground">
+                  Updated: {new Date(transaction.updatedAt).toLocaleString()}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>

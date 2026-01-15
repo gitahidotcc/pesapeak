@@ -1,62 +1,24 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ArrowRightLeft, Minus, Plus, type LucideIcon } from "lucide-react";
-import {
-  Banknote,
-  Wallet,
-  CreditCard,
-  PiggyBank,
-  Coins,
-  Landmark,
-  Building,
-  Building2,
-  Home,
-  Briefcase,
-  ShoppingCart,
-  TrendingUp,
-  DollarSign,
-  Euro,
-  Bitcoin,
-  Smartphone,
-  Car,
-  Plane,
-  Gift,
-  Heart,
-} from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
 import { TransactionDetailsDialog } from "./transaction-details-dialog";
 import { AddTransactionDialog } from "./add-transaction-dialog";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  banknote: Banknote,
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  "piggy-bank": PiggyBank,
-  coins: Coins,
-  landmark: Landmark,
-  building: Building,
-  "building-2": Building2,
-  home: Home,
-  briefcase: Briefcase,
-  "shopping-cart": ShoppingCart,
-  "trending-up": TrendingUp,
-  "dollar-sign": DollarSign,
-  euro: Euro,
-  bitcoin: Bitcoin,
-  smartphone: Smartphone,
-  car: Car,
-  plane: Plane,
-  gift: Gift,
-  heart: Heart,
-};
+import { TransactionItem } from "./transaction-item";
+import { TransactionListSkeleton, LoadingMoreIndicator } from "./transaction-list-skeleton";
+import { EmptyState } from "./empty-state";
 
 interface TransactionsListProps {
   filter: PeriodFilter;
   selectedAccountId?: string | null;
   selectedCategoryId?: string | null;
+  searchQuery?: string;
+  onAddTransaction?: () => void;
+  onClearFilters?: () => void;
+  onResultCountChange?: (count: number | undefined) => void;
 }
 
 const formatCurrency = (amount: number, currency: string = "USD") => {
@@ -90,40 +52,29 @@ const formatTime = (time: string | null) => {
   return `${displayHour}:${minutes} ${ampm}`;
 };
 
-type Transaction = {
-  id: string;
-  type: "income" | "expense" | "transfer";
-  amount: number;
-  accountId: string | null;
-  categoryId: string | null;
-  categoryIcon: string | null;
-  categoryColor: string | null;
-  fromAccountId: string | null;
-  toAccountId: string | null;
-  parentTransactionId: string | null;
-  isFee: boolean;
-  date: string;
-  time: string | null;
-  notes: string;
-  attachmentPath: string | null;
-  attachmentFileName: string | null;
-  attachmentMimeType: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+// Define types locally for now, ideally should be shared
+type Transaction = any;
 
 const PAGE_SIZE = 50;
+
+type ListItem =
+  | { type: "header"; date: string; count: number; total: number; id: string }
+  | { type: "transaction"; data: Transaction; id: string; isFee?: boolean };
 
 export function TransactionsList({
   filter,
   selectedAccountId,
   selectedCategoryId,
+  searchQuery = "",
+  onAddTransaction,
+  onClearFilters,
+  onResultCountChange,
 }: TransactionsListProps) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   const { data: accounts } = api.accounts.list.useQuery();
   const { data: folders } = api.categories.list.useQuery();
@@ -135,6 +86,7 @@ export function TransactionsList({
       endDate?: string;
       accountId?: string;
       categoryId?: string;
+      search?: string;
     } = {};
 
     if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
@@ -160,8 +112,12 @@ export function TransactionsList({
       params.categoryId = selectedCategoryId;
     }
 
+    if (searchQuery && searchQuery.trim()) {
+      params.search = searchQuery.trim();
+    }
+
     return params;
-  }, [filter, selectedAccountId, selectedCategoryId]);
+  }, [filter, selectedAccountId, selectedCategoryId, searchQuery]);
 
   const {
     data,
@@ -180,35 +136,28 @@ export function TransactionsList({
     }
   );
 
-  const transactions = useMemo(() => {
-    if (!data?.pages) return [];
-    return data.pages.flatMap((page) => page.items);
+  // Calculate total result count across all pages
+  const totalResultCount = useMemo(() => {
+    if (!data?.pages) return undefined;
+    const allTransactions = data.pages.flatMap((page) => page.items);
+    return allTransactions.length;
   }, [data]);
 
+  // Notify parent of result count changes
   useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node) return;
-    if (!hasNextPage) return;
+    if (onResultCountChange) {
+      onResultCountChange(totalResultCount);
+    }
+  }, [totalResultCount, onResultCountChange]);
 
-    const observer = new IntersectionObserver((entries) => {
-      const entry = entries[0];
-      if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    });
+  const flatItems = useMemo(() => {
+    if (!data?.pages) return [];
+    const allTransactions = data.pages.flatMap((page) => page.items);
 
-    observer.observe(node);
+    if (allTransactions.length === 0) return [];
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
-  const groupedTransactions = useMemo(() => {
-    if (!transactions || transactions.length === 0) return [];
-
-    const grouped: Record<string, typeof transactions> = {};
-    transactions.forEach((transaction) => {
+    const grouped: Record<string, Transaction[]> = {};
+    allTransactions.forEach((transaction) => {
       const dateKey = transaction.date.split("T")[0];
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
@@ -216,28 +165,113 @@ export function TransactionsList({
       grouped[dateKey].push(transaction);
     });
 
-    // Sort dates (most recent first)
-    return Object.entries(grouped)
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([date, txs]) => ({
-        date,
-        transactions: txs.sort((a, b) => {
-          if (a.time && b.time) {
-            return b.time.localeCompare(a.time);
-          }
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }),
-      }));
-  }, [transactions]);
+    const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
-  const getDateTotal = (txs: typeof transactions) => {
-    if (!txs) return 0;
-    return txs.reduce((sum, tx) => {
-      if (tx.type === "income") return sum + tx.amount;
-      if (tx.type === "expense") return sum - tx.amount;
-      return sum; // Transfers don't affect total
-    }, 0);
-  };
+    const items: ListItem[] = [];
+
+    sortedDates.forEach((date) => {
+      const txs = grouped[date]!;
+      
+      // Separate parent transactions from fees
+      const parentTxs = txs.filter((tx) => !tx.isFee);
+      const feeTxs = txs.filter((tx) => tx.isFee);
+      
+      // Create a map of parent transaction IDs to their fees
+      const feesByParent = new Map<string, Transaction[]>();
+      feeTxs.forEach((fee) => {
+        if (fee.parentTransactionId) {
+          if (!feesByParent.has(fee.parentTransactionId)) {
+            feesByParent.set(fee.parentTransactionId, []);
+          }
+          feesByParent.get(fee.parentTransactionId)!.push(fee);
+        }
+      });
+      
+      // Sort parent transactions within day
+      parentTxs.sort((a, b) => {
+        if (a.time && b.time) return b.time.localeCompare(a.time);
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+      // Calculate total (including fees)
+      const total = txs.reduce((sum, tx) => {
+        if (tx.type === "income") return sum + tx.amount;
+        if (tx.type === "expense") return sum - tx.amount;
+        return sum;
+      }, 0);
+
+      items.push({
+        type: "header",
+        date,
+        count: parentTxs.length, // Count only parent transactions
+        total,
+        id: `header-${date}`,
+      });
+
+      // Add parent transactions with their fees nested
+      parentTxs.forEach((tx) => {
+        items.push({
+          type: "transaction",
+          data: tx,
+          id: tx.id,
+          isFee: false,
+        });
+        
+        // Add fees for this parent transaction, sorted by time
+        const fees = feesByParent.get(tx.id) || [];
+        fees.sort((a, b) => {
+          if (a.time && b.time) return b.time.localeCompare(a.time);
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        
+        fees.forEach((fee) => {
+          items.push({
+            type: "transaction",
+            data: fee,
+            id: fee.id,
+            isFee: true,
+          });
+        });
+      });
+    });
+
+    return items;
+  }, [data]);
+
+  const virtualizer = useVirtualizer({
+    count: flatItems.length + (hasNextPage ? 1 : 0), // Add 1 for the loader
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => {
+      // Loader
+      if (index >= flatItems.length) return 50;
+
+      const item = flatItems[index];
+      if (item.type === "header") return 60; // Approximate header height
+      return 88; // Approximate transaction item height
+    },
+    overscan: 5,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  useEffect(() => {
+    const [lastItem] = [...virtualItems].reverse();
+    if (!lastItem) return;
+
+    if (
+      lastItem.index >= flatItems.length - 1 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      fetchNextPage();
+    }
+  }, [
+    hasNextPage,
+    fetchNextPage,
+    flatItems.length,
+    isFetchingNextPage,
+    virtualItems,
+  ]);
 
   const getAccountName = (accountId: string | null) => {
     if (!accountId || !accounts) return "Unknown";
@@ -254,234 +288,124 @@ export function TransactionsList({
     return "Uncategorized";
   };
 
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case "income":
-        return Plus;
-      case "expense":
-        return Minus;
-      case "transfer":
-        return ArrowRightLeft;
-      default:
-        return Minus;
-    }
-  };
-
-  if (status === "pending" && transactions.length === 0) {
-    return (
-      <div className="py-12 text-center text-muted-foreground">
-        Loading transactions...
-      </div>
-    );
+  if (status === "pending") {
+    return <TransactionListSkeleton />;
   }
 
-  if (status === "success" && transactions.length === 0) {
+  if (status === "success" && flatItems.length === 0) {
+    const hasFilters = Boolean(
+      selectedAccountId || 
+      selectedCategoryId || 
+      searchQuery || 
+      (filter.type !== "all")
+    );
+    
     return (
-      <div className="py-12 text-center text-muted-foreground">
-        No transactions found for the selected period
-      </div>
+      <EmptyState
+        hasFilters={hasFilters}
+        onClearFilters={onClearFilters}
+        onAddTransaction={onAddTransaction}
+        searchQuery={searchQuery}
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
-      {groupedTransactions.map(({ date, transactions: txs }) => {
-        const dateTotal = getDateTotal(txs);
-        const dateTotalFormatted = formatCurrency(
-          Math.abs(dateTotal),
-          accounts?.[0]?.currency || "USD"
-        );
+    <div 
+      className="w-full min-h-[400px] max-h-[calc(100vh-24rem)] sm:max-h-[calc(100vh-20rem)]" 
+      ref={parentRef} 
+      style={{ overflowY: "auto", contain: "strict", scrollBehavior: "smooth" }}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: "100%",
+          position: "relative",
+        }}
+      >
+        {virtualItems.map((virtualItem) => {
+          const isLoader = virtualItem.index >= flatItems.length;
 
-        return (
-          <div key={date} className="space-y-3">
-            {/* Date Header */}
-            <div className="flex items-center justify-between border-b border-border pb-2">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">
-                  {formatDate(date)}
-                </h3>
+          if (isLoader) {
+            return (
+              <div
+                key="loader"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: `${virtualItem.size}px`,
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                {isFetchingNextPage ? <LoadingMoreIndicator /> : null}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {txs.length} {txs.length === 1 ? "transaction" : "transactions"}
-              </div>
-            </div>
+            );
+          }
 
-            {/* Transactions List */}
-            <div className="space-y-2">
-              {txs
-                .filter((transaction) => !transaction.isFee)
-                .map((transaction) => {
-                const isIncome = transaction.type === "income";
-                const isExpense = transaction.type === "expense";
-                const isTransfer = transaction.type === "transfer";
-                
-                // Use category icon if available, otherwise fall back to transaction type icon
-                const CategoryIcon = transaction.categoryIcon && ICON_MAP[transaction.categoryIcon]
-                  ? ICON_MAP[transaction.categoryIcon]
-                  : getTransactionIcon(transaction.type);
-                const categoryColor = transaction.categoryColor || undefined;
+          const item = flatItems[virtualItem.index];
 
-                const feeLines =
-                  transactions?.filter(
-                    (tx) => tx.parentTransactionId === transaction.id && tx.isFee
-                  ) ?? [];
-
-                return (
-                  <div key={transaction.id} className="space-y-1">
-                    <div
-                      onClick={() => {
-                        setSelectedTransaction(transaction);
-                        setIsDetailsOpen(true);
-                      }}
-                      className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50 cursor-pointer"
-                    >
-                    {/* Icon */}
-                    <div
+          return (
+            <div
+              key={item.id}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: `${virtualItem.size}px`,
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+              className="px-1"
+            >
+              {item.type === "header" ? (
+                <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground">
+                    {formatDate(item.date)}
+                  </h3>
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs">
+                    <span className="text-muted-foreground font-medium">
+                      {item.count} {item.count === 1 ? "transaction" : "transactions"}
+                    </span>
+                    <span
                       className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-lg",
-                        categoryColor
-                          ? undefined
-                          : isIncome && "bg-green-100 dark:bg-green-900/30",
-                        categoryColor
-                          ? undefined
-                          : isExpense && "bg-red-100 dark:bg-red-900/30",
-                        categoryColor
-                          ? undefined
-                          : isTransfer && "bg-blue-100 dark:bg-blue-900/30"
+                        "font-semibold tabular-nums",
+                        item.total > 0
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : item.total < 0
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-muted-foreground"
                       )}
-                      style={
-                        categoryColor
-                          ? {
-                              backgroundColor: `${categoryColor}20`,
-                            }
-                          : undefined
-                      }
                     >
-                      <CategoryIcon
-                        className={cn(
-                          "h-5 w-5",
-                          categoryColor
-                            ? undefined
-                            : isIncome && "text-green-600 dark:text-green-400",
-                          categoryColor
-                            ? undefined
-                            : isExpense && "text-red-600 dark:text-red-400",
-                          categoryColor
-                            ? undefined
-                            : isTransfer && "text-blue-600 dark:text-blue-400"
-                        )}
-                        style={
-                          categoryColor
-                            ? {
-                                color: categoryColor,
-                              }
-                            : undefined
-                        }
-                      />
-                    </div>
-
-                    {/* Details */}
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground">
-                          {isTransfer
-                            ? `Transfer: ${getAccountName(transaction.fromAccountId)} → ${getAccountName(transaction.toAccountId)}`
-                            : transaction.notes || getCategoryName(transaction.categoryId)}
-                        </span>
-                        {transaction.time && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatTime(transaction.time)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {!isTransfer && (
-                          <>
-                            <span>{getCategoryName(transaction.categoryId)}</span>
-                            <span>•</span>
-                          </>
-                        )}
-                        <span>{getAccountName(transaction.accountId || transaction.fromAccountId)}</span>
-                      </div>
-                    </div>
-
-                      {/* Amount */}
-                      <div
-                        className={cn(
-                          "text-right font-semibold",
-                          isIncome && "text-green-600 dark:text-green-400",
-                          isExpense && "text-red-600 dark:text-red-400",
-                          isTransfer && "text-blue-600 dark:text-blue-400"
-                        )}
-                      >
-                        {isIncome && "+"}
-                        {isExpense && "-"}
-                        {formatCurrency(
-                          transaction.amount,
-                          accounts?.find(
-                            (acc) =>
-                              acc.id === transaction.accountId ||
-                              acc.id === transaction.fromAccountId
-                          )?.currency || "USD"
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Fee rows (if any) */}
-                    {feeLines.map((fee) => (
-                      <div
-                        key={fee.id}
-                        className="ml-10 flex items-center justify-between rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-2 text-xs"
-                      >
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-foreground">Fee</span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {getCategoryName(fee.categoryId)} •{" "}
-                            {getAccountName(fee.accountId || transaction.accountId)}
-                          </span>
-                        </div>
-                        <div className="font-semibold text-red-500 dark:text-red-400">
-                          -{formatCurrency(fee.amount, accounts?.[0]?.currency || "USD")}
-                        </div>
-                      </div>
-                    ))}
+                      {item.total > 0 ? "+" : item.total < 0 ? "-" : ""}
+                      {formatCurrency(
+                        Math.abs(item.total),
+                        accounts?.[0]?.currency || "USD"
+                      )}
+                    </span>
                   </div>
-                );
-              })}
-              
-              {/* Date Total - Below last transaction */}
-              <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
-                <div
-                  className={cn(
-                    "text-sm font-semibold",
-                    dateTotal > 0
-                      ? "text-green-600 dark:text-green-400"
-                      : dateTotal < 0
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-muted-foreground"
-                  )}
-                >
-                  {dateTotal > 0 ? "+" : dateTotal < 0 ? "-" : ""}
-                  {dateTotalFormatted}
                 </div>
-              </div>
+              ) : (
+                <div className={cn("py-1", item.isFee && "pl-4 sm:pl-6")}>
+                  <TransactionItem
+                    transaction={item.data}
+                    onClick={() => {
+                      setSelectedTransaction(item.data);
+                      setIsDetailsOpen(true);
+                    }}
+                    getAccountName={getAccountName}
+                    getCategoryName={getCategoryName}
+                    formatCurrency={formatCurrency}
+                    formatTime={formatTime}
+                    currency={accounts?.[0]?.currency || "USD"}
+                    isFee={item.isFee}
+                  />
+                </div>
+              )}
             </div>
-          </div>
-        );
-      })}
-
-      {/* Infinite Scroll Trigger */}
-      <div ref={sentinelRef} className="py-4">
-        {isFetchingNextPage && hasNextPage && (
-          <div className="text-center text-sm text-muted-foreground">
-            Loading more transactions...
-          </div>
-        )}
-        {!hasNextPage && transactions.length > 0 && (
-          <div className="text-center text-sm text-muted-foreground">
-            No more transactions to load
-          </div>
-        )}
+          );
+        })}
       </div>
 
       {/* Transaction Details Dialog */}

@@ -146,10 +146,17 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
 
   const utils = api.useUtils();
   const createTransaction = api.transactions.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Transaction created successfully");
-      utils.transactions.list.invalidate();
-      utils.accounts.list.invalidate(); // Refresh account balances
+      // Invalidate all transaction list queries (including infinite queries)
+      // This will mark them as stale and trigger automatic refetch
+      await utils.transactions.list.invalidate(undefined);
+      // Invalidate summary query to update totals
+      await utils.transactions.summary.invalidate(undefined);
+      // Invalidate periods query to update month summaries
+      await utils.transactions.periods.invalidate(undefined);
+      // Refresh account balances
+      await utils.accounts.list.invalidate();
       resetForm();
     },
     onError: (error) => {
@@ -158,10 +165,17 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
   });
 
   const updateTransaction = api.transactions.update.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Transaction updated successfully");
-      utils.transactions.list.invalidate();
-      utils.accounts.list.invalidate(); // Refresh account balances
+      // Invalidate all transaction list queries (including infinite queries)
+      // This will mark them as stale and trigger automatic refetch
+      await utils.transactions.list.invalidate(undefined);
+      // Invalidate summary query to update totals
+      await utils.transactions.summary.invalidate(undefined);
+      // Invalidate periods query to update month summaries
+      await utils.transactions.periods.invalidate(undefined);
+      // Refresh account balances
+      await utils.accounts.list.invalidate();
       resetForm();
     },
     onError: (error) => {
