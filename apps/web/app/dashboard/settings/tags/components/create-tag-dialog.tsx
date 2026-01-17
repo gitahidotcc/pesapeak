@@ -39,10 +39,10 @@ export function CreateTagDialog() {
     const utils = api.useUtils();
 
     const form = useForm<TagFormData>({
-        resolver: zodResolver(tagFormSchema),
+        resolver: zodResolver(tagFormSchema as any),
         defaultValues: {
             name: "",
-            type: "other", // Default type
+            type: "other" as const, // Default type
         },
     });
 

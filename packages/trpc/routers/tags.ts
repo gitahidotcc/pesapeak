@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, and, sql } from "drizzle-orm";
-import { tags, transactionTags } from "@pesapeak/db/schema";
+import { tags, transactionTags, transactions } from "@pesapeak/db/schema";
 import { router, authedProcedure } from "../index";
 
 export const tagsRouter = router({
@@ -41,13 +41,13 @@ export const tagsRouter = router({
                 });
             }
 
-            await ctx.db.insert(tags).values({
+            const [newTag] = await ctx.db.insert(tags).values({
                 userId: ctx.user.id,
                 name: input.name,
                 type: input.type,
-            });
+            }).returning();
 
-            return { success: true };
+            return newTag;
         }),
 
     update: authedProcedure
@@ -93,6 +93,49 @@ export const tagsRouter = router({
                 .where(eq(tags.id, input.id));
 
             return { success: true };
+        }),
+
+    getAnalytics: authedProcedure
+        .input(
+            z.object({
+                startDate: z.string(),
+                endDate: z.string(),
+                accountId: z.string().optional(),
+            })
+        )
+        .query(async ({ ctx, input }) => {
+            const startDate = new Date(input.startDate);
+            const endDate = new Date(input.endDate);
+            // Ensure end date covers the full day
+            endDate.setHours(23, 59, 59, 999);
+
+            const conditions = [
+                eq(transactions.userId, ctx.user.id),
+                eq(transactions.type, "expense"),
+                sql`${transactions.date} >= ${startDate.toISOString()}`,
+                sql`${transactions.date} <= ${endDate.toISOString()}`,
+            ];
+
+            if (input.accountId) {
+                conditions.push(eq(transactions.accountId, input.accountId));
+            }
+
+            const result = await ctx.db
+                .select({
+                    tagId: tags.id,
+                    tagName: tags.name,
+                    tagType: tags.type,
+                    totalAmount: sql<number>`sum(${transactions.amount})`.mapWith(Number),
+                    count: sql<number>`count(${transactions.id})`.mapWith(Number),
+                })
+                .from(transactions)
+                .innerJoin(transactionTags, eq(transactions.id, transactionTags.transactionId))
+                .innerJoin(tags, eq(transactionTags.tagId, tags.id))
+                .where(and(...conditions))
+                .groupBy(tags.id)
+                .orderBy(sql`sum(${transactions.amount}) desc`);
+
+            return result.filter(r => r.totalAmount > 0);
         }),
 
     delete: authedProcedure

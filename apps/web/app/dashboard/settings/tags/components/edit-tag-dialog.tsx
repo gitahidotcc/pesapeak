@@ -42,7 +42,7 @@ export function EditTagDialog({ open, onOpenChange, tag }: EditTagDialogProps) {
     const utils = api.useUtils();
 
     const form = useForm<TagFormData>({
-        resolver: zodResolver(tagFormSchema),
+        resolver: zodResolver(tagFormSchema as any),
         defaultValues: {
             name: tag.name,
             type: tag.type as any,

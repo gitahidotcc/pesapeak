@@ -38,17 +38,12 @@ export function TagsInput({ selectedTags, onTagsChange, amount, categoryId, date
     const utils = api.useUtils();
 
     const createTag = api.tags.create.useMutation({
-        onSuccess: (data, variables) => {
-            // Refetch tags to get the ID of the new tag
-            // Optimistic update might be complex here without ID
-            utils.tags.getAll.invalidate().then((newTags) => {
-                // Try to find the new tag by name and select it
-                const newTag = newTags?.find(t => t.name === variables.name);
-                if (newTag) {
-                    onTagsChange([...selectedTags, newTag.id]);
-                }
-                setInputValue("");
-            });
+        onSuccess: (newTag) => {
+            utils.tags.getAll.invalidate();
+            if (newTag) {
+                onTagsChange([...selectedTags, newTag.id]);
+            }
+            setInputValue("");
         }
     });
 

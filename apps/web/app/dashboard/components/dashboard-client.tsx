@@ -6,9 +6,11 @@ import { DashboardFilterDialog } from "./dashboard-filter-dialog";
 import { BalanceChart } from "./balance-chart";
 import { IncomeExpenseChart } from "./income-expense-chart";
 import { ExpenseCategoryChart } from "./expense-category-chart";
+import { TagAnalyticsChart } from "./tag-analytics-chart";
 import { PeriodFilter } from "../transactions/components/period-filter-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 export function DashboardClient() {
     const now = new Date();
@@ -66,14 +68,7 @@ export function DashboardClient() {
         return historyData.daily[historyData?.daily.length - 1].balance;
     }, [historyData]);
 
-    const formatCurrency = (amount: number) => {
-        // Amount in cents
-        return new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency: currency,
-            minimumFractionDigits: 2,
-        }).format(amount / 100);
-    };
+    // const formatCurrency = imported from utils
 
     const periodLabel = useMemo(() => {
         if (filter.type === "month" && filter.month !== undefined && filter.year !== undefined) {
@@ -124,7 +119,7 @@ export function DashboardClient() {
                         <Wallet className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(latestBalance)}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(latestBalance, currency)}</div>
                         <p className="text-xs text-muted-foreground">
                             {/* Optional: change vs prev period */}
                         </p>
@@ -141,7 +136,7 @@ export function DashboardClient() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                            + {formatCurrency(totalIncome)}
+                            + {formatCurrency(totalIncome, currency)}
                         </div>
                     </CardContent>
                 </Card>
@@ -156,7 +151,7 @@ export function DashboardClient() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
-                            - {formatCurrency(totalExpenses)}
+                            - {formatCurrency(totalExpenses, currency)}
                         </div>
                     </CardContent>
                 </Card>
@@ -175,6 +170,14 @@ export function DashboardClient() {
 
                 <div className="md:col-span-2">
                     <ExpenseCategoryChart data={categoryBreakdown ?? []} currency={currency} />
+                </div>
+
+                <div className="md:col-span-2">
+                    <TagAnalyticsChart
+                        dateRange={dateRange}
+                        accountId={selectedAccountId}
+                        currency={currency}
+                    />
                 </div>
             </div>
 
