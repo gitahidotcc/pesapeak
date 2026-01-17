@@ -94,6 +94,31 @@ export function TransactionItem({
 
     const categoryColor = transaction.categoryColor || undefined;
 
+    // Helper function to get icon container className
+    const getIconClassName = (): string => {
+        if (isFee) {
+            return "h-8 w-8 sm:h-9 sm:w-9 bg-muted-foreground/10 text-muted-foreground";
+        }
+        
+        if (categoryColor) {
+            return "h-10 w-10 sm:h-12 sm:w-12";
+        }
+        
+        if (isIncome) {
+            return "h-10 w-10 sm:h-12 sm:w-12 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400";
+        }
+        
+        if (isExpense) {
+            return "h-10 w-10 sm:h-12 sm:w-12 bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400";
+        }
+        
+        if (isTransfer) {
+            return "h-10 w-10 sm:h-12 sm:w-12 bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400";
+        }
+        
+        return "h-10 w-10 sm:h-12 sm:w-12";
+    };
+
     // Render main transaction
     return (
         <div className="group relative">
@@ -111,12 +136,7 @@ export function TransactionItem({
                 <div
                     className={cn(
                         "flex shrink-0 items-center justify-center rounded-2xl border border-border/50 shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md",
-                        isFee 
-                            ? "h-8 w-8 sm:h-9 sm:w-9 bg-muted-foreground/10 text-muted-foreground"
-                            : "h-10 w-10 sm:h-12 sm:w-12",
-                        !isFee && categoryColor ? undefined : !isFee && isIncome && "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-                        !isFee && categoryColor ? undefined : !isFee && isExpense && "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400",
-                        !isFee && categoryColor ? undefined : !isFee && isTransfer && "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                        getIconClassName()
                     )}
                     style={
                         !isFee && categoryColor

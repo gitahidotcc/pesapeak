@@ -5,6 +5,7 @@ import { api } from "@/lib/trpc";
 import { DashboardFilterDialog } from "./dashboard-filter-dialog";
 import { BalanceChart } from "./balance-chart";
 import { IncomeExpenseChart } from "./income-expense-chart";
+import { ExpenseCategoryChart } from "./expense-category-chart";
 import { PeriodFilter } from "../transactions/components/period-filter-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
@@ -48,6 +49,12 @@ export function DashboardClient() {
     }, [filter]);
 
     const { data: historyData } = api.dashboard.history.useQuery({
+        accountId: selectedAccountId ?? undefined,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+    });
+
+    const { data: categoryBreakdown } = api.dashboard.expenseByCategory.useQuery({
         accountId: selectedAccountId ?? undefined,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
@@ -164,6 +171,10 @@ export function DashboardClient() {
 
                 <div className="md:col-span-2">
                     <IncomeExpenseChart data={historyData?.daily ?? []} currency={currency} />
+                </div>
+
+                <div className="md:col-span-2">
+                    <ExpenseCategoryChart data={categoryBreakdown ?? []} currency={currency} />
                 </div>
             </div>
 

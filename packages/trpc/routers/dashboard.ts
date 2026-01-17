@@ -1,6 +1,6 @@
-import { and, desc, eq, gte, or } from "drizzle-orm";
+import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { financialAccounts, transactions } from "@pesapeak/db/schema";
+import { categories, categoryFolders, financialAccounts, transactions } from "@pesapeak/db/schema";
 import { authedProcedure, router } from "../index";
 
 const historyInputSchema = z.object({
@@ -287,6 +287,84 @@ export const dashboardRouter = router({
                 totalIncome,
                 totalExpenses
             };
+        }),
+    expenseByCategory: authedProcedure
+        .input(historyInputSchema)
+        .output(
+            z.array(
+                z.object({
+                    categoryId: z.string().nullable(),
+                    categoryName: z.string(),
+                    categoryIcon: z.string().nullable(),
+                    categoryColor: z.string().nullable(),
+                    folderName: z.string().nullable(),
+                    amount: z.number(),
+                    percentage: z.number(),
+                })
+            )
+        )
+        .query(async ({ ctx, input }) => {
+            const startDateTime = new Date(input.startDate);
+            startDateTime.setUTCHours(0, 0, 0, 0);
+
+            const endDateTime = new Date(input.endDate);
+            endDateTime.setUTCHours(23, 59, 59, 999);
+
+            // Build transaction conditions
+            const transactionConditions = [
+                eq(transactions.userId, ctx.user.id),
+                eq(transactions.type, "expense"),
+                gte(transactions.date, startDateTime),
+                lte(transactions.date, endDateTime),
+            ];
+
+            // Add account filter if provided
+            if (input.accountId) {
+                transactionConditions.push(eq(transactions.accountId, input.accountId));
+            }
+
+            // Query expense transactions grouped by category
+            // Using raw SQL for aggregation with LEFT JOIN
+            // Using MAX() for category fields since they're functionally dependent on categoryId
+            const categoryBreakdown = await ctx.db
+                .select({
+                    categoryId: transactions.categoryId,
+                    categoryName: sql<string | null>`MAX(${categories.name})`,
+                    categoryIcon: sql<string | null>`MAX(${categories.icon})`,
+                    categoryColor: sql<string | null>`MAX(${categories.color})`,
+                    folderName: sql<string | null>`MAX(${categoryFolders.name})`,
+                    amount: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+                })
+                .from(transactions)
+                .leftJoin(categories, eq(transactions.categoryId, categories.id))
+                .leftJoin(categoryFolders, eq(categories.folderId, categoryFolders.id))
+                .where(and(...transactionConditions))
+                .groupBy(transactions.categoryId)
+                .orderBy(desc(sql<number>`COALESCE(SUM(${transactions.amount}), 0)`));
+
+            // Calculate total expenses for percentage calculation
+            const totalExpenses = categoryBreakdown.reduce(
+                (sum, item) => sum + Number(item.amount),
+                0
+            );
+
+            // Format results and calculate percentages
+            const results = categoryBreakdown.map((item) => {
+                const amount = Number(item.amount);
+                const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0;
+
+                return {
+                    categoryId: item.categoryId,
+                    categoryName: item.categoryName ?? "Uncategorized",
+                    categoryIcon: item.categoryIcon ?? null,
+                    categoryColor: item.categoryColor ?? null,
+                    folderName: item.folderName ?? null,
+                    amount: amount,
+                    percentage: Math.round(percentage * 100) / 100, // Round to 2 decimal places
+                };
+            });
+
+            return results;
         }),
 });
 
