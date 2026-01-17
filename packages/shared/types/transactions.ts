@@ -1,8 +1,3 @@
-/**
- * Shared Transaction types
- * Based on the tRPC transactionOutputSchema
- */
-
 export type TransactionType = "income" | "expense" | "transfer";
 
 export interface Transaction {
