@@ -10,6 +10,7 @@ import { AddTransactionDialog } from "./add-transaction-dialog";
 import { TransactionItem } from "./transaction-item";
 import { TransactionListSkeleton, LoadingMoreIndicator } from "./transaction-list-skeleton";
 import { EmptyState } from "./empty-state";
+import type { Transaction } from "@pesapeak/shared/types/transactions";
 
 interface TransactionsListProps {
   filter: PeriodFilter;
@@ -51,9 +52,6 @@ const formatTime = (time: string | null) => {
   const displayHour = hour % 12 || 12;
   return `${displayHour}:${minutes} ${ampm}`;
 };
-
-// Define types locally for now, ideally should be shared
-type Transaction = any;
 
 const PAGE_SIZE = 50;
 

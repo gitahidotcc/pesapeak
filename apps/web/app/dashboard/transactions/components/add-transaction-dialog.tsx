@@ -16,22 +16,7 @@ import { CategoryPicker } from "./category-picker";
 import { DateTimePicker } from "./date-time-picker";
 import { AttachmentPicker } from "./attachment-picker";
 import type { TransactionType } from "../types/transaction";
-
-interface Transaction {
-  id: string;
-  type: "income" | "expense" | "transfer";
-  amount: number;
-  accountId: string | null;
-  categoryId: string | null;
-  fromAccountId: string | null;
-  toAccountId: string | null;
-  date: string;
-  time: string | null;
-  notes: string;
-  attachmentPath: string | null;
-  attachmentFileName: string | null;
-  attachmentMimeType: string | null;
-}
+import type { Transaction } from "@pesapeak/shared/types/transactions";
 
 interface AddTransactionDialogProps {
   open: boolean;

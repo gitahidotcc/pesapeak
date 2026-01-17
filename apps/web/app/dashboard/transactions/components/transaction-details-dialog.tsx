@@ -39,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/trpc";
 import { toast } from "sonner";
+import type { Transaction } from "@pesapeak/shared/types/transactions";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   banknote: Banknote,
@@ -62,28 +63,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   gift: Gift,
   heart: Heart,
 };
-
-interface Transaction {
-  id: string;
-  type: "income" | "expense" | "transfer";
-  amount: number;
-  accountId: string | null;
-  categoryId: string | null;
-  categoryIcon: string | null;
-  categoryColor: string | null;
-  fromAccountId: string | null;
-  toAccountId: string | null;
-  parentTransactionId: string | null;
-  isFee: boolean;
-  date: string;
-  time: string | null;
-  notes: string;
-  attachmentPath: string | null;
-  attachmentFileName: string | null;
-  attachmentMimeType: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface TransactionDetailsDialogProps {
   transaction: Transaction | null;
