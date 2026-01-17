@@ -16,13 +16,13 @@ export const list = authedProcedure
   .query(async ({ ctx, input }) => {
     const { limit, cursor, search, ...filters } = input;
     const offset = cursor ?? 0;
-    
+
     // If search is present, use query builder API with EXISTS subqueries
     // Otherwise, use the relational query API for simplicity
     if (search && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
       const baseConditions = buildTransactionConditions(ctx, filters);
-      
+
       // Build search condition using EXISTS subqueries for related tables
       // This is more efficient than multiple LEFT JOINs and works reliably
       const searchCondition = or(
@@ -53,9 +53,9 @@ export const list = authedProcedure
           AND ${financialAccounts.name} LIKE ${searchTerm}
         )`
       )!;
-      
+
       const allConditions = [...baseConditions, searchCondition];
-      
+
       // Use query builder API - need to join with category to get icon/color
       const query = ctx.db
         .select({
@@ -85,12 +85,36 @@ export const list = authedProcedure
         .orderBy(desc(transactions.date))
         .limit(limit + 1)
         .offset(offset);
-      
+
       const results = await query;
-      
+
       const hasMore = results.length > limit;
       const transactionList = hasMore ? results.slice(0, limit) : results;
-      
+
+      // Fetch tags for these transactions
+      const transactionIds = transactionList.map((t) => t.id);
+      let tagsMap: Record<string, any[]> = {};
+
+      if (transactionIds.length > 0) {
+        const tagsData = await ctx.db.query.transactionTags.findMany({
+          where: (tt, { inArray }) => inArray(tt.transactionId, transactionIds),
+          with: {
+            tag: true,
+          }
+        });
+
+        tagsData.forEach(tt => {
+          if (!tagsMap[tt.transactionId]) {
+            tagsMap[tt.transactionId] = [];
+          }
+          tagsMap[tt.transactionId].push({
+            id: tt.tag.id,
+            name: tt.tag.name,
+            type: tt.tag.type ?? undefined,
+          });
+        });
+      }
+
       return {
         items: transactionList.map((transaction: any) => ({
           id: transaction.id,
@@ -112,11 +136,12 @@ export const list = authedProcedure
           attachmentMimeType: transaction.attachmentMimeType ?? null,
           createdAt: new Date(transaction.createdAt ?? Date.now()).toISOString(),
           updatedAt: new Date(transaction.updatedAt ?? Date.now()).toISOString(),
+          tags: tagsMap[transaction.id] || [],
         })),
         nextCursor: hasMore ? offset + limit : null,
       };
     }
-    
+
     // No search - use relational query API (simpler and works well for non-search queries)
     const conditions = buildTransactionConditions(ctx, filters);
     const queryOptions: any = {
@@ -126,6 +151,11 @@ export const list = authedProcedure
       offset,
       with: {
         category: true,
+        tags: {
+          with: {
+            tag: true,
+          }
+        }
       },
     };
 
@@ -155,6 +185,11 @@ export const list = authedProcedure
         attachmentMimeType: transaction.attachmentMimeType ?? null,
         createdAt: new Date(transaction.createdAt ?? Date.now()).toISOString(),
         updatedAt: new Date(transaction.updatedAt ?? Date.now()).toISOString(),
+        tags: transaction.tags.map((tt: any) => ({
+          id: tt.tag.id,
+          name: tt.tag.name,
+          type: tt.tag.type ?? undefined,
+        })),
       })),
       nextCursor: hasMore ? offset + limit : null,
     };

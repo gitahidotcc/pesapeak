@@ -21,4 +21,5 @@ export interface Transaction {
   attachmentMimeType: string | null;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  tags?: { id: string; name: string; type?: string }[];
 }

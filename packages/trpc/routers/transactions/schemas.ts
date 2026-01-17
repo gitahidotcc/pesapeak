@@ -8,11 +8,11 @@ const isValidDateString = (value: string): boolean => {
   const year = Number(yearStr);
   const month = Number(monthStr);
   const day = Number(dayStr);
-  
+
   if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
     return false;
   }
-  
+
   const date = new Date(Date.UTC(year, month - 1, day));
   return (
     date.getUTCFullYear() === year &&
@@ -49,6 +49,11 @@ export const transactionOutputSchema = z.object({
   attachmentMimeType: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  tags: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    type: z.string().optional(),
+  })).default([]),
 });
 
 export const feeInputSchema = z
@@ -77,6 +82,7 @@ export const createTransactionInputSchema = z.object({
       data: z.string(), // base64 encoded
     })
     .optional(),
+  tags: z.array(z.string()).optional(), // Array of tag IDs
 });
 
 export const transactionFiltersSchema = z.object({
@@ -85,6 +91,7 @@ export const transactionFiltersSchema = z.object({
   type: z.enum(["income", "expense", "transfer"]).optional(),
   startDate: filterDateSchema.optional(),
   endDate: filterDateSchema.optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 export const listInputSchema = transactionFiltersSchema.extend({
