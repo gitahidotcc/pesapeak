@@ -100,7 +100,7 @@ export function IncomeExpenseChart({ data, currency = "USD" }: IncomeExpenseChar
                                                     {payload.map((entry) => (
                                                         <div key={entry.name} className="flex flex-col">
                                                             <span className="text-[0.70rem] uppercase text-muted-foreground" style={{ color: entry.color }}>
-                                                                {entry.name === 'incomeValue' ? 'Income' : 'Expense'}
+                                                                {entry.name}
                                                             </span>
                                                             <span className="font-bold">
                                                                 {formatCurrency(entry.value as number)}

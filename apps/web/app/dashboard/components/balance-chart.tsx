@@ -67,8 +67,8 @@ export function BalanceChart({ data, currency = "USD" }: BalanceChartProps) {
                         >
                             <defs>
                                 <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <XAxis
@@ -119,7 +119,7 @@ export function BalanceChart({ data, currency = "USD" }: BalanceChartProps) {
                             <Area
                                 type="monotone"
                                 dataKey="balanceValue"
-                                stroke="hsl(var(--primary))"
+                                stroke="#3b82f6"
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorBalance)"
