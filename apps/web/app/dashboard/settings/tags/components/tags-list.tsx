@@ -22,12 +22,18 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { EditTagDialog } from "./edit-tag-dialog"; // Will create this next
+import { EditTagDialog } from "./edit-tag-dialog";
+import { type TagFormData } from "../validations/tag-form";
 import { Skeleton } from "@/components/ui/skeleton";
+
+function toTagType(value: string | null | undefined): TagFormData["type"] {
+    if (value === "context" || value === "frequency" || value === "emotion" || value === "other") return value;
+    return "other";
+}
 
 export function TagsList() {
     const { data: tags, isLoading } = api.tags.getAll.useQuery();
-    const [editingTag, setEditingTag] = useState<{ id: string; name: string; type: string } | null>(null);
+    const [editingTag, setEditingTag] = useState<{ id: string; name: string; type: TagFormData["type"] } | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const utils = api.useUtils();
@@ -99,7 +105,7 @@ export function TagsList() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditingTag({ id: tag.id, name: tag.name, type: tag.type || "other" })}>
+                    <DropdownMenuItem onClick={() => setEditingTag({ id: tag.id, name: tag.name, type: toTagType(tag.type) })}>
                         <Edit2 className="mr-2 h-4 w-4" />
                         Edit
                     </DropdownMenuItem>

@@ -212,7 +212,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           date: formData.date,
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
-          tagIds: formData.tags,
+          tags: formData.tags,
         };
         if (formData.hasFee && formData.feeAmount) {
           const feeAmount = parseFloat(formData.feeAmount);
@@ -245,7 +245,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
           attachment,
-          tagIds: formData.tags,
+          tags: formData.tags,
         };
         if (formData.hasFee && formData.feeAmount) {
           const feeAmount = parseFloat(formData.feeAmount);

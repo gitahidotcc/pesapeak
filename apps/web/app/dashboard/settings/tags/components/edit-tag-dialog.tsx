@@ -35,17 +35,17 @@ import { tagFormSchema, type TagFormData } from "../validations/tag-form";
 interface EditTagDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    tag: { id: string; name: string; type: string };
+    tag: { id: string; name: string; type: TagFormData["type"] };
 }
 
 export function EditTagDialog({ open, onOpenChange, tag }: EditTagDialogProps) {
     const utils = api.useUtils();
 
     const form = useForm<TagFormData>({
-        resolver: zodResolver(tagFormSchema as any),
+        resolver: zodResolver(tagFormSchema),
         defaultValues: {
             name: tag.name,
-            type: tag.type as any,
+            type: tag.type,
         },
     });
 
@@ -54,7 +54,7 @@ export function EditTagDialog({ open, onOpenChange, tag }: EditTagDialogProps) {
         if (open) {
             form.reset({
                 name: tag.name,
-                type: tag.type as any,
+                type: tag.type,
             });
         }
     }, [open, tag, form]);

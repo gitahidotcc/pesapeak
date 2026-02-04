@@ -73,6 +73,7 @@ export function TransactionsList({
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
 
   const { data: accounts } = api.accounts.list.useQuery();
   const { data: folders } = api.categories.list.useQuery();
@@ -227,6 +228,50 @@ export function TransactionsList({
     return items;
   }, [data]);
 
+  // Measure container offset from window top for scroll margin
+  // This ensures items are positioned correctly when the list isn't at window scroll origin
+  useEffect(() => {
+    const updateScrollMargin = () => {
+      if (parentRef.current) {
+        const rect = parentRef.current.getBoundingClientRect();
+        const newMargin = rect.top + window.scrollY;
+        setScrollMargin(newMargin);
+      }
+    };
+
+    updateScrollMargin();
+    
+    // Use ResizeObserver for layout changes and throttled scroll for window scroll
+    const resizeObserver = new ResizeObserver(() => {
+      updateScrollMargin();
+    });
+    
+    if (parentRef.current) {
+      resizeObserver.observe(parentRef.current);
+    }
+
+    // Throttle scroll updates to avoid performance issues
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          updateScrollMargin();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("resize", updateScrollMargin);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateScrollMargin);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   const virtualizer = useWindowVirtualizer({
     count: flatItems.length + (hasNextPage ? 1 : 0), // Add 1 for the loader
     estimateSize: (index) => {
@@ -244,6 +289,7 @@ export function TransactionsList({
       return baseHeight;
     },
     overscan: 5,
+    scrollMargin,
   });
 
   const virtualItems = virtualizer.getVirtualItems();
