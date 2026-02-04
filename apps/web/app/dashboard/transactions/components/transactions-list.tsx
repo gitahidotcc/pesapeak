@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
@@ -73,7 +72,7 @@ export function TransactionsList({
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
-  const [scrollMargin, setScrollMargin] = useState(0);
+  const loaderRef = useRef<HTMLDivElement | null>(null);
 
   const { data: accounts } = api.accounts.list.useQuery();
   const { data: folders } = api.categories.list.useQuery();
@@ -228,90 +227,33 @@ export function TransactionsList({
     return items;
   }, [data]);
 
-  // Measure container offset from window top for scroll margin
-  // This ensures items are positioned correctly when the list isn't at window scroll origin
+  // Infinite scroll without virtualization: load next page when loader comes into view
   useEffect(() => {
-    const updateScrollMargin = () => {
-      if (parentRef.current) {
-        const rect = parentRef.current.getBoundingClientRect();
-        const newMargin = rect.top + window.scrollY;
-        setScrollMargin(newMargin);
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const loader = loaderRef.current;
+    if (!loader) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        root: null, // use viewport / window scroll
+        rootMargin: "0px 0px 200px 0px",
+        threshold: 0.1,
       }
-    };
+    );
 
-    updateScrollMargin();
-    
-    // Use ResizeObserver for layout changes and throttled scroll for window scroll
-    const resizeObserver = new ResizeObserver(() => {
-      updateScrollMargin();
-    });
-    
-    if (parentRef.current) {
-      resizeObserver.observe(parentRef.current);
-    }
-
-    // Throttle scroll updates to avoid performance issues
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          updateScrollMargin();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener("resize", updateScrollMargin);
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    observer.observe(loader);
 
     return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateScrollMargin);
-      window.removeEventListener("scroll", handleScroll);
+      observer.disconnect();
     };
-  }, []);
-
-  const virtualizer = useWindowVirtualizer({
-    count: flatItems.length + (hasNextPage ? 1 : 0), // Add 1 for the loader
-    estimateSize: (index) => {
-      // Loader
-      if (index >= flatItems.length) return 50;
-
-      const item = flatItems[index];
-      if (item.type === "header") return 60; // Approximate header height
-
-      // Adjust size if there are fees
-      const baseHeight = 88; // Base item height
-      if (item.type === "transaction" && item.fees && item.fees.length > 0) {
-        return baseHeight + (item.fees.length * 36) + 16; // Add height for fees
-      }
-      return baseHeight;
-    },
-    overscan: 5,
-    scrollMargin,
-  });
-
-  const virtualItems = virtualizer.getVirtualItems();
-
-  useEffect(() => {
-    const [lastItem] = [...virtualItems].reverse();
-    if (!lastItem) return;
-
-    if (
-      lastItem.index >= flatItems.length - 1 &&
-      hasNextPage &&
-      !isFetchingNextPage
-    ) {
-      fetchNextPage();
-    }
-  }, [
-    hasNextPage,
-    fetchNextPage,
-    flatItems.length,
-    isFetchingNextPage,
-    virtualItems,
-  ]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const getAccountName = (accountId: string | null) => {
     if (!accountId || !accounts) return "Unknown";
@@ -351,97 +293,63 @@ export function TransactionsList({
   }
 
   return (
-    <div ref={parentRef}>
-      <div
-        style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: "100%",
-          position: "relative",
-        }}
-      >
-        {virtualItems.map((virtualItem) => {
-          const isLoader = virtualItem.index >= flatItems.length;
-
-          if (isLoader) {
-            return (
-              <div
-                key="loader"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                {isFetchingNextPage ? <LoadingMoreIndicator /> : null}
-              </div>
-            );
-          }
-
-          const item = flatItems[virtualItem.index];
-
-          return (
+    <div ref={parentRef} className="w-full">
+      <div className="w-full space-y-2">
+        {flatItems.map((item) =>
+          item.type === "header" ? (
             <div
               key={item.id}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: `${virtualItem.size}px`,
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-              className="px-1"
+              className="px-1 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2"
             >
-              {item.type === "header" ? (
-                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2">
-                  <h3 className="text-sm sm:text-base font-semibold text-foreground">
-                    {formatDate(item.date)}
-                  </h3>
-                  <div className="flex items-center gap-2 sm:gap-3 text-xs">
-                    <span className="text-muted-foreground font-medium">
-                      {item.count} {item.count === 1 ? "transaction" : "transactions"}
-                    </span>
-                    <span
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        item.total > 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : item.total < 0
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-muted-foreground"
-                      )}
-                    >
-                      {item.total > 0 ? "+" : item.total < 0 ? "-" : ""}
-                      {formatCurrency(
-                        Math.abs(item.total),
-                        accounts?.[0]?.currency || "USD"
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-1">
-                  <TransactionItem
-                    transaction={item.data}
-                    fees={item.fees}
-                    onClick={() => {
-                      setSelectedTransaction(item.data);
-                      setIsDetailsOpen(true);
-                    }}
-                    getAccountName={getAccountName}
-                    getCategoryName={getCategoryName}
-                    formatCurrency={formatCurrency}
-                    formatTime={formatTime}
-                    currency={accounts?.[0]?.currency || "USD"}
-                  />
-                </div>
-              )}
+              <h3 className="text-sm sm:text-base font-semibold text-foreground">
+                {formatDate(item.date)}
+              </h3>
+              <div className="flex items-center gap-2 sm:gap-3 text-xs">
+                <span className="text-muted-foreground font-medium">
+                  {item.count} {item.count === 1 ? "transaction" : "transactions"}
+                </span>
+                <span
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    item.total > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : item.total < 0
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-muted-foreground"
+                  )}
+                >
+                  {item.total > 0 ? "+" : item.total < 0 ? "-" : ""}
+                  {formatCurrency(
+                    Math.abs(item.total),
+                    accounts?.[0]?.currency || "USD"
+                  )}
+                </span>
+              </div>
             </div>
-          );
-        })}
+          ) : (
+            <div key={item.id} className="px-1 py-1">
+              <TransactionItem
+                transaction={item.data}
+                fees={item.fees}
+                onClick={() => {
+                  setSelectedTransaction(item.data);
+                  setIsDetailsOpen(true);
+                }}
+                getAccountName={getAccountName}
+                getCategoryName={getCategoryName}
+                formatCurrency={formatCurrency}
+                formatTime={formatTime}
+                currency={accounts?.[0]?.currency || "USD"}
+              />
+            </div>
+          )
+        )}
+
+        {hasNextPage && (
+          <div ref={loaderRef} className="py-4 flex justify-center">
+            {isFetchingNextPage ? <LoadingMoreIndicator /> : null}
+          </div>
+        )}
       </div>
 
       {/* Transaction Details Dialog */}
