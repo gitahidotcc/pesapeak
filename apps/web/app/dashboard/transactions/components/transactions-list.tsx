@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
@@ -57,7 +57,7 @@ const PAGE_SIZE = 50;
 
 type ListItem =
   | { type: "header"; date: string; count: number; total: number; id: string }
-  | { type: "transaction"; data: Transaction; id: string; isFee?: boolean };
+  | { type: "transaction"; data: Transaction; id: string; fees?: Transaction[] };
 
 export function TransactionsList({
   filter,
@@ -169,11 +169,11 @@ export function TransactionsList({
 
     sortedDates.forEach((date) => {
       const txs = grouped[date]!;
-      
+
       // Separate parent transactions from fees
       const parentTxs = txs.filter((tx) => !tx.isFee);
       const feeTxs = txs.filter((tx) => tx.isFee);
-      
+
       // Create a map of parent transaction IDs to their fees
       const feesByParent = new Map<string, Transaction[]>();
       feeTxs.forEach((fee) => {
@@ -184,7 +184,7 @@ export function TransactionsList({
           feesByParent.get(fee.parentTransactionId)!.push(fee);
         }
       });
-      
+
       // Sort parent transactions within day
       parentTxs.sort((a, b) => {
         if (a.time && b.time) return b.time.localeCompare(a.time);
@@ -208,27 +208,18 @@ export function TransactionsList({
 
       // Add parent transactions with their fees nested
       parentTxs.forEach((tx) => {
-        items.push({
-          type: "transaction",
-          data: tx,
-          id: tx.id,
-          isFee: false,
-        });
-        
-        // Add fees for this parent transaction, sorted by time
+        // Get fees for this parent transaction, sorted by time
         const fees = feesByParent.get(tx.id) || [];
         fees.sort((a, b) => {
           if (a.time && b.time) return b.time.localeCompare(a.time);
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
-        
-        fees.forEach((fee) => {
-          items.push({
-            type: "transaction",
-            data: fee,
-            id: fee.id,
-            isFee: true,
-          });
+
+        items.push({
+          type: "transaction",
+          data: tx,
+          id: tx.id,
+          fees: fees, // Pass fees to the item
         });
       });
     });
@@ -236,16 +227,21 @@ export function TransactionsList({
     return items;
   }, [data]);
 
-  const virtualizer = useVirtualizer({
+  const virtualizer = useWindowVirtualizer({
     count: flatItems.length + (hasNextPage ? 1 : 0), // Add 1 for the loader
-    getScrollElement: () => parentRef.current,
     estimateSize: (index) => {
       // Loader
       if (index >= flatItems.length) return 50;
 
       const item = flatItems[index];
       if (item.type === "header") return 60; // Approximate header height
-      return 88; // Approximate transaction item height
+
+      // Adjust size if there are fees
+      const baseHeight = 88; // Base item height
+      if (item.type === "transaction" && item.fees && item.fees.length > 0) {
+        return baseHeight + (item.fees.length * 36) + 16; // Add height for fees
+      }
+      return baseHeight;
     },
     overscan: 5,
   });
@@ -292,12 +288,12 @@ export function TransactionsList({
 
   if (status === "success" && flatItems.length === 0) {
     const hasFilters = Boolean(
-      selectedAccountId || 
-      selectedCategoryId || 
-      searchQuery || 
+      selectedAccountId ||
+      selectedCategoryId ||
+      searchQuery ||
       (filter.type !== "all")
     );
-    
+
     return (
       <EmptyState
         hasFilters={hasFilters}
@@ -309,11 +305,7 @@ export function TransactionsList({
   }
 
   return (
-    <div 
-      className="w-full min-h-[400px] max-h-[calc(100vh-24rem)] sm:max-h-[calc(100vh-20rem)]" 
-      ref={parentRef} 
-      style={{ overflowY: "auto", contain: "strict", scrollBehavior: "smooth" }}
-    >
+    <div ref={parentRef}>
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -358,7 +350,7 @@ export function TransactionsList({
               className="px-1"
             >
               {item.type === "header" ? (
-                <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2">
                   <h3 className="text-sm sm:text-base font-semibold text-foreground">
                     {formatDate(item.date)}
                   </h3>
@@ -385,9 +377,10 @@ export function TransactionsList({
                   </div>
                 </div>
               ) : (
-                <div className={cn("py-1", item.isFee && "pl-4 sm:pl-6")}>
+                <div className="py-1">
                   <TransactionItem
                     transaction={item.data}
+                    fees={item.fees}
                     onClick={() => {
                       setSelectedTransaction(item.data);
                       setIsDetailsOpen(true);
@@ -397,7 +390,6 @@ export function TransactionsList({
                     formatCurrency={formatCurrency}
                     formatTime={formatTime}
                     currency={accounts?.[0]?.currency || "USD"}
-                    isFee={item.isFee}
                   />
                 </div>
               )}
