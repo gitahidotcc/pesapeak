@@ -39,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/trpc";
 import { toast } from "sonner";
+import type { Transaction } from "@pesapeak/shared/types/transactions";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   banknote: Banknote,
@@ -62,28 +63,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   gift: Gift,
   heart: Heart,
 };
-
-interface Transaction {
-  id: string;
-  type: "income" | "expense" | "transfer";
-  amount: number;
-  accountId: string | null;
-  categoryId: string | null;
-  categoryIcon: string | null;
-  categoryColor: string | null;
-  fromAccountId: string | null;
-  toAccountId: string | null;
-  parentTransactionId: string | null;
-  isFee: boolean;
-  date: string;
-  time: string | null;
-  notes: string;
-  attachmentPath: string | null;
-  attachmentFileName: string | null;
-  attachmentMimeType: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface TransactionDetailsDialogProps {
   transaction: Transaction | null;
@@ -262,13 +241,13 @@ export function TransactionDetailsDialog({
               ? undefined
               : isTransfer && "bg-gradient-to-br from-blue-500/10 to-blue-600/5"
           )}
-          style={
-            categoryColor
-              ? {
+            style={
+              categoryColor
+                ? {
                   background: `linear-gradient(to bottom right, ${categoryColor}15, ${categoryColor}08)`,
                 }
-              : undefined
-          }>
+                : undefined
+            }>
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
               <div
                 className={cn(
@@ -286,9 +265,9 @@ export function TransactionDetailsDialog({
                 style={
                   categoryColor
                     ? {
-                        backgroundColor: `${categoryColor}20`,
-                        borderColor: `${categoryColor}40`,
-                      }
+                      backgroundColor: `${categoryColor}20`,
+                      borderColor: `${categoryColor}40`,
+                    }
                     : undefined
                 }
               >
@@ -308,8 +287,8 @@ export function TransactionDetailsDialog({
                   style={
                     categoryColor
                       ? {
-                          color: categoryColor,
-                        }
+                        color: categoryColor,
+                      }
                       : undefined
                   }
                 />
@@ -369,6 +348,22 @@ export function TransactionDetailsDialog({
               )}
             </div>
 
+            {/* Tags Card */}
+            {transaction.tags && transaction.tags.length > 0 && (
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:p-5 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tags
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {transaction.tags.map(tag => (
+                    <div key={tag.id} className="inline-flex items-center rounded-full border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80">
+                      {tag.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Date & Time Card */}
             <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:p-5 space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -408,7 +403,7 @@ export function TransactionDetailsDialog({
               const userId = pathParts[transactionsIndex + 1];
               const filename = pathParts[transactionsIndex + 2];
               const fileUrl = `/api/files/transactions/${userId}/${filename}`;
-              
+
               const isImage = transaction.attachmentMimeType?.startsWith("image/");
               const isPdf = transaction.attachmentMimeType === "application/pdf";
               const canPreview = isImage || isPdf;
@@ -418,7 +413,7 @@ export function TransactionDetailsDialog({
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Attachment
                   </h3>
-                  
+
                   {canPreview ? (
                     <div className="space-y-3">
                       {isImage && (

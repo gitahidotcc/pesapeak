@@ -182,6 +182,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
   passwordResetTokens: many(passwordResetTokens),
+  tags: many(tags),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -248,10 +249,10 @@ export const categories = sqliteTable(
     folderId: text("folderId")
       .notNull()
       .references(() => categoryFolders.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  icon: text("icon").notNull().default("banknote"),
-  color: text("color").notNull().default("#222222"),
-  createdAt: createdAtField(),
+    name: text("name").notNull(),
+    icon: text("icon").notNull().default("banknote"),
+    color: text("color").notNull().default("#222222"),
+    createdAt: createdAtField(),
     updatedAt: updatedAtField(),
   },
   (table) => ({
@@ -277,6 +278,66 @@ export const categoriesRelations = relations(categories, ({ one }) => ({
   folder: one(categoryFolders, {
     fields: [categories.folderId],
     references: [categoryFolders.id],
+  }),
+}));
+
+// Tags
+export const tags = sqliteTable(
+  "tag",
+  {
+    id: text("id")
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type", { enum: ["context", "frequency", "emotion", "other"] }).default("other"),
+    createdAt: createdAtField(),
+    updatedAt: updatedAtField(),
+  },
+  (table) => ({
+    userIdIdx: index("tags_userId_idx").on(table.userId),
+    uniqueNamePerUser: uniqueIndex("unique_tag_name_per_user")
+      .on(table.userId, table.name),
+  })
+);
+
+export const tagsRelations = relations(tags, ({ one, many }) => ({
+  user: one(users, {
+    fields: [tags.userId],
+    references: [users.id],
+  }),
+  transactions: many(transactionTags),
+}));
+
+// Transaction Tags (Many-to-Many)
+export const transactionTags = sqliteTable(
+  "transactionTag",
+  {
+    transactionId: text("transactionId")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    tagId: text("tagId")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.transactionId, t.tagId] }),
+    transactionIdIdx: index("transactionTags_transactionId_idx").on(t.transactionId),
+    tagIdIdx: index("transactionTags_tagId_idx").on(t.tagId),
+  })
+);
+
+export const transactionTagsRelations = relations(transactionTags, ({ one }) => ({
+  transaction: one(transactions, {
+    fields: [transactionTags.transactionId],
+    references: [transactions.id],
+  }),
+  tag: one(tags, {
+    fields: [transactionTags.tagId],
+    references: [tags.id],
   }),
 }));
 
@@ -327,7 +388,7 @@ export const transactions = sqliteTable(
 );
 
 // Relations for transactions
-export const transactionsRelations = relations(transactions, ({ one }) => ({
+export const transactionsRelations = relations(transactions, ({ one, many }) => ({
   user: one(users, {
     fields: [transactions.userId],
     references: [users.id],
@@ -350,5 +411,6 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
     fields: [transactions.categoryId],
     references: [categories.id],
   }),
+  tags: many(transactionTags),
 }));
 

@@ -16,22 +16,8 @@ import { CategoryPicker } from "./category-picker";
 import { DateTimePicker } from "./date-time-picker";
 import { AttachmentPicker } from "./attachment-picker";
 import type { TransactionType } from "../types/transaction";
-
-interface Transaction {
-  id: string;
-  type: "income" | "expense" | "transfer";
-  amount: number;
-  accountId: string | null;
-  categoryId: string | null;
-  fromAccountId: string | null;
-  toAccountId: string | null;
-  date: string;
-  time: string | null;
-  notes: string;
-  attachmentPath: string | null;
-  attachmentFileName: string | null;
-  attachmentMimeType: string | null;
-}
+import type { Transaction } from "@pesapeak/shared/types/transactions";
+import { TagsInput } from "./tags-input";
 
 interface AddTransactionDialogProps {
   open: boolean;
@@ -96,25 +82,25 @@ export function AddTransactionDialog({
     icon: typeof Plus;
     color: string;
   }> = [
-    {
-      type: "income",
-      label: "Income",
-      icon: Plus,
-      color: "text-green-600 dark:text-green-400",
-    },
-    {
-      type: "expense",
-      label: "Expense",
-      icon: Minus,
-      color: "text-red-600 dark:text-red-400",
-    },
-    {
-      type: "transfer",
-      label: "Transfer",
-      icon: ArrowRightLeft,
-      color: "text-blue-600 dark:text-blue-400",
-    },
-  ];
+      {
+        type: "income",
+        label: "Income",
+        icon: Plus,
+        color: "text-green-600 dark:text-green-400",
+      },
+      {
+        type: "expense",
+        label: "Expense",
+        icon: Minus,
+        color: "text-red-600 dark:text-red-400",
+      },
+      {
+        type: "transfer",
+        label: "Transfer",
+        icon: ArrowRightLeft,
+        color: "text-blue-600 dark:text-blue-400",
+      },
+    ];
 
   const TypeIcon = transactionTypes.find((t) => t.type === formData.type)?.icon || Minus;
   const typeColor = transactionTypes.find((t) => t.type === formData.type)?.color || "";
@@ -146,9 +132,8 @@ export function AddTransactionDialog({
                 value={formData.amount}
                 onChange={(e) => updateField("amount", e.target.value)}
                 placeholder="0.00"
-                className={`w-full rounded-xl border border-border bg-background pl-12 pr-4 py-2.5 text-lg font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-                  errors.amount ? "border-destructive" : ""
-                }`}
+                className={`w-full rounded-xl border border-border bg-background pl-12 pr-4 py-2.5 text-lg font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ${errors.amount ? "border-destructive" : ""
+                  }`}
                 required
               />
             </div>
@@ -168,11 +153,10 @@ export function AddTransactionDialog({
                   key={type}
                   type="button"
                   onClick={() => setTransactionType(type)}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-                    formData.type === type
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${formData.type === type
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
                 >
                   <Icon className={`h-4 w-4 ${formData.type === type ? color : ""}`} />
                   <span>{label}</span>
@@ -261,9 +245,8 @@ export function AddTransactionDialog({
                       value={formData.feeAmount}
                       onChange={(e) => updateField("feeAmount", e.target.value)}
                       placeholder="0.00"
-                      className={`w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-                        errors.feeAmount ? "border-destructive" : ""
-                      }`}
+                      className={`w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 ${errors.feeAmount ? "border-destructive" : ""
+                        }`}
                     />
                     {errors.feeAmount && (
                       <p className="text-xs text-destructive">{errors.feeAmount}</p>
@@ -326,6 +309,20 @@ export function AddTransactionDialog({
               // We'll handle this by setting a flag or sending null attachment
             }}
           />
+
+          {/* Tags */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-foreground">
+              Tags
+            </label>
+            <TagsInput
+              selectedTags={formData.tags}
+              onTagsChange={(tags) => updateField("tags", tags)}
+              amount={parseFloat(formData.amount) || undefined}
+              categoryId={formData.categoryId || undefined}
+              date={formData.date ? new Date(formData.date + (formData.time ? `T${formData.time}` : '')) : undefined}
+            />
+          </div>
 
           <DialogFooter>
             <Button

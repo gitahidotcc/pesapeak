@@ -4,13 +4,14 @@ import { FloatingActionButtonWrapper } from "./components/floating-action-button
 import { TransactionsPageClient } from "./components/transactions-page-client";
 
 interface TransactionsPageProps {
-  searchParams?: {
+  searchParams: Promise<{
     accountId?: string;
     categoryId?: string;
-  };
+  }>;
 }
 
-export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
+export default async function TransactionsPage(props: TransactionsPageProps) {
+  const searchParams = await props.searchParams;
   const session = await getServerSession();
 
   if (!session) {
@@ -19,7 +20,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
 
   return (
     <>
-      <TransactionsPageClient 
+      <TransactionsPageClient
         initialAccountId={searchParams?.accountId ?? null}
         initialCategoryId={searchParams?.categoryId ?? null}
       />

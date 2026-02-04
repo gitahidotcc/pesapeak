@@ -6,33 +6,18 @@ import { toast } from "sonner";
 import type { TransactionFormData, TransactionType, ExistingAttachment } from "../types/transaction";
 import { validateTransactionForm } from "../validations/transaction-form";
 import { fileToBase64 } from "../utils/file-upload";
-
-interface Transaction {
-  id: string;
-  type: "income" | "expense" | "transfer";
-  amount: number;
-  accountId: string | null;
-  categoryId: string | null;
-  fromAccountId: string | null;
-  toAccountId: string | null;
-  date: string;
-  time: string | null;
-  notes: string;
-  attachmentPath: string | null;
-  attachmentFileName: string | null;
-  attachmentMimeType: string | null;
-}
+import type { Transaction } from "@pesapeak/shared/types/transactions";
 
 const getInitialFormData = (): TransactionFormData => {
   // Use local timezone for date and time
   const now = new Date();
-  
+
   // Get local date in YYYY-MM-DD format
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const date = `${year}-${month}-${day}`;
-  
+
   // Get local time in HH:mm format
   const hours = String(now.getHours()).padStart(2, "0");
   const minutes = String(now.getMinutes()).padStart(2, "0");
@@ -54,6 +39,7 @@ const getInitialFormData = (): TransactionFormData => {
     notes: "",
     attachment: null,
     existingAttachment: null,
+    tags: [],
   };
 };
 
@@ -85,7 +71,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           const userId = pathParts[transactionsIndex + 1];
           const filename = pathParts[transactionsIndex + 2];
           const fileUrl = `/api/files/transactions/${userId}/${filename}`;
-          
+
           existingAttachment = {
             url: fileUrl,
             fileName: editingTransaction.attachmentFileName,
@@ -110,6 +96,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
         notes: editingTransaction.notes || "",
         attachment: null, // New file selection (if user wants to replace)
         existingAttachment, // Existing attachment info for display
+        tags: editingTransaction.tags?.map(t => t.id) || [],
       });
     } else {
       setFormData(getInitialFormData());
@@ -225,6 +212,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           date: formData.date,
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
+          tags: formData.tags,
         };
         if (formData.hasFee && formData.feeAmount) {
           const feeAmount = parseFloat(formData.feeAmount);
@@ -233,7 +221,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
             categoryId: formData.feeCategoryId || undefined,
           };
         }
-        
+
         // If a new file is selected, include it (replaces existing)
         if (attachment) {
           updateData.attachment = attachment;
@@ -242,7 +230,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           // Signal explicit removal to the backend
           updateData.removeAttachment = true;
         }
-        
+
         await updateTransaction.mutateAsync(updateData);
       } else {
         // Create new transaction
@@ -257,6 +245,7 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
           attachment,
+          tags: formData.tags,
         };
         if (formData.hasFee && formData.feeAmount) {
           const feeAmount = parseFloat(formData.feeAmount);

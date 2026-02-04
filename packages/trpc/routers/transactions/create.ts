@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { transactions, categories } from "@pesapeak/db/schema";
+import { transactions, categories, transactionTags } from "@pesapeak/db/schema";
 import { authedProcedure } from "../../index";
 import { createTransactionInputSchema, transactionOutputSchema } from "./schemas";
 import {
@@ -181,6 +181,14 @@ export const create = authedProcedure
           }
         }
 
+        if (input.tags && input.tags.length > 0) {
+          const tagValues = input.tags.map(tagId => ({
+            transactionId,
+            tagId,
+          }));
+          tx.insert(transactionTags).values(tagValues).run();
+        }
+
         return created;
       }
     );
@@ -202,6 +210,20 @@ export const create = authedProcedure
       }
     }
 
+    // Fetch tags
+    const transactionTagsData = await ctx.db.query.transactionTags.findMany({
+      where: eq(transactionTags.transactionId, newTransaction.id),
+      with: {
+        tag: true,
+      }
+    });
+
+    const tagsList = transactionTagsData.map(tt => ({
+      id: tt.tag.id,
+      name: tt.tag.name,
+      type: tt.tag.type ?? undefined,
+    }));
+
     return {
       id: newTransaction.id,
       type: newTransaction.type as "income" | "expense" | "transfer",
@@ -222,5 +244,6 @@ export const create = authedProcedure
       attachmentMimeType: newTransaction.attachmentMimeType ?? null,
       createdAt: new Date(newTransaction.createdAt ?? Date.now()).toISOString(),
       updatedAt: new Date(newTransaction.updatedAt ?? Date.now()).toISOString(),
+      tags: tagsList,
     };
   });

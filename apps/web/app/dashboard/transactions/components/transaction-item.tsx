@@ -57,7 +57,7 @@ export interface TransactionItemProps {
     formatCurrency: (amount: number, currency?: string) => string;
     formatTime: (time: string | null) => string;
     currency: string;
-    isFee?: boolean;
+    fees?: any[];
 }
 
 export function TransactionItem({
@@ -68,7 +68,7 @@ export function TransactionItem({
     formatCurrency,
     formatTime,
     currency,
-    isFee = false,
+    fees = [],
 }: TransactionItemProps) {
     const isIncome = transaction.type === "income";
     const isExpense = transaction.type === "expense";
@@ -94,32 +94,42 @@ export function TransactionItem({
 
     const categoryColor = transaction.categoryColor || undefined;
 
+    // Helper function to get icon container className
+    const getIconClassName = (): string => {
+        if (categoryColor) {
+            return "h-10 w-10 sm:h-12 sm:w-12";
+        }
+
+        if (isIncome) {
+            return "h-10 w-10 sm:h-12 sm:w-12 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400";
+        }
+
+        if (isExpense) {
+            return "h-10 w-10 sm:h-12 sm:w-12 bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400";
+        }
+
+        if (isTransfer) {
+            return "h-10 w-10 sm:h-12 sm:w-12 bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400";
+        }
+
+        return "h-10 w-10 sm:h-12 sm:w-12";
+    };
+
     // Render main transaction
     return (
-        <div className="group relative">
-            {isFee && (
-                <div className="absolute -left-4 sm:-left-6 top-0 bottom-1/2 w-px bg-border/30" />
-            )}
+        <div className="group relative rounded-xl border border-border/40 bg-card/60 transition-all hover:border-border hover:bg-muted/60 hover:shadow-md">
             <div
                 onClick={onClick}
-                className={cn(
-                    "flex cursor-pointer items-center gap-3 sm:gap-4 rounded-xl border border-border/40 bg-card/60 p-3 sm:p-3.5 transition-all hover:border-border hover:bg-muted/60 hover:shadow-md active:scale-[0.99] touch-manipulation",
-                    isFee && "border-l-2 border-l-muted-foreground/30 bg-muted/10"
-                )}
+                className="flex cursor-pointer items-center gap-3 sm:gap-4 p-3 sm:p-3.5 touch-manipulation"
             >
                 {/* Icon */}
                 <div
                     className={cn(
                         "flex shrink-0 items-center justify-center rounded-2xl border border-border/50 shadow-sm transition-all group-hover:scale-105 group-hover:shadow-md",
-                        isFee 
-                            ? "h-8 w-8 sm:h-9 sm:w-9 bg-muted-foreground/10 text-muted-foreground"
-                            : "h-10 w-10 sm:h-12 sm:w-12",
-                        !isFee && categoryColor ? undefined : !isFee && isIncome && "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
-                        !isFee && categoryColor ? undefined : !isFee && isExpense && "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400",
-                        !isFee && categoryColor ? undefined : !isFee && isTransfer && "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                        getIconClassName()
                     )}
                     style={
-                        !isFee && categoryColor
+                        categoryColor
                             ? {
                                 backgroundColor: `${categoryColor}15`,
                                 color: categoryColor,
@@ -128,38 +138,26 @@ export function TransactionItem({
                             : undefined
                     }
                 >
-                    {isFee ? (
-                        <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-60" />
-                    ) : (
-                        <CategoryIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                    )}
+                    <CategoryIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
 
                 {/* Content */}
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
                     <div className="flex items-center justify-between gap-4">
-                        <span className={cn(
-                            "truncate font-medium",
-                            isFee ? "text-sm text-muted-foreground" : "text-foreground"
-                        )}>
-                            {isFee 
-                                ? transaction.notes || getCategoryName(transaction.categoryId)
-                                : isTransfer
-                                    ? `Transfer to ${getAccountName(transaction.toAccountId)}`
-                                    : transaction.notes || getCategoryName(transaction.categoryId)}
+                        <span className="truncate font-medium text-foreground">
+                            {isTransfer
+                                ? `Transfer to ${getAccountName(transaction.toAccountId)}`
+                                : transaction.notes || getCategoryName(transaction.categoryId)}
                         </span>
                         <span
                             className={cn(
-                                "whitespace-nowrap tabular-nums",
-                                isFee 
-                                    ? "text-sm sm:text-base font-semibold text-muted-foreground"
-                                    : "text-lg sm:text-xl font-bold",
-                                !isFee && isIncome && "text-emerald-600 dark:text-emerald-400",
-                                !isFee && isExpense && "text-foreground",
-                                !isFee && isTransfer && "text-foreground"
+                                "whitespace-nowrap tabular-nums text-lg sm:text-xl font-bold",
+                                isIncome && "text-emerald-600 dark:text-emerald-400",
+                                isExpense && "text-foreground",
+                                isTransfer && "text-foreground"
                             )}
                         >
-                            {!isFee && isIncome && "+"}
+                            {isIncome && "+"}
                             {isExpense && "-"}
                             {formatCurrency(transaction.amount, currency)}
                         </span>
@@ -183,6 +181,25 @@ export function TransactionItem({
                     </div>
                 </div>
             </div>
+
+            {/* Fees Section */}
+            {fees.length > 0 && (
+                <div className="border-t border-border/30 bg-muted/20 rounded-b-xl px-3 py-2 sm:px-3.5 sm:py-2.5 space-y-2">
+                    {fees.map((fee) => (
+                        <div key={fee.id} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted-foreground/10">
+                                    <Minus className="h-3 w-3" />
+                                </div>
+                                <span className="truncate max-w-[150px] sm:max-w-xs">{fee.notes || "Transaction Fee"}</span>
+                            </div>
+                            <span className="tabular-nums font-medium text-muted-foreground">
+                                -{formatCurrency(fee.amount, currency)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

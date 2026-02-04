@@ -1,5 +1,33 @@
 import { z } from "zod";
 
+// Shared date validation helper
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+const isValidDateString = (value: string): boolean => {
+  const [yearStr, monthStr, dayStr] = value.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return false;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
+
+const filterDateSchema = z
+  .string()
+  .regex(dateRegex, "Date must be in YYYY-MM-DD format")
+  .refine(isValidDateString, {
+    message: "Date must be a valid calendar date",
+  });
+
 export const transactionOutputSchema = z.object({
   id: z.string(),
   type: z.enum(["income", "expense", "transfer"]),
@@ -21,6 +49,11 @@ export const transactionOutputSchema = z.object({
   attachmentMimeType: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  tags: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    type: z.string().optional(),
+  })).default([]),
 });
 
 export const feeInputSchema = z
@@ -49,20 +82,16 @@ export const createTransactionInputSchema = z.object({
       data: z.string(), // base64 encoded
     })
     .optional(),
+  tags: z.array(z.string()).optional(), // Array of tag IDs
 });
 
 export const transactionFiltersSchema = z.object({
   accountId: z.string().optional(),
   categoryId: z.string().optional(),
   type: z.enum(["income", "expense", "transfer"]).optional(),
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "startDate must be in YYYY-MM-DD format")
-    .optional(),
-  endDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "endDate must be in YYYY-MM-DD format")
-    .optional(),
+  startDate: filterDateSchema.optional(),
+  endDate: filterDateSchema.optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 export const listInputSchema = transactionFiltersSchema.extend({

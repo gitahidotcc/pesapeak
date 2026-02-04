@@ -1,5 +1,5 @@
 import { eq, gte, lte, or, sql } from "drizzle-orm";
-import { transactions, financialAccounts } from "@pesapeak/db/schema";
+import { transactions, financialAccounts, transactionTags } from "@pesapeak/db/schema";
 import type { AuthedContext } from "../../index";
 import type { PesapeakDBTransaction, DB } from "@pesapeak/db";
 import fs from "node:fs/promises";
@@ -79,44 +79,33 @@ export function buildTransactionConditions(
     conditions.push(eq(transactions.type, filters.type));
   }
 
+  if (filters.tags && filters.tags.length > 0) {
+    // Filter transactions that have at least one of the given tags (EXISTS subquery)
+    conditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM ${transactionTags}
+        WHERE ${transactionTags.transactionId} = ${transactions.id}
+        AND ${transactionTags.tagId} IN (${sql.join(filters.tags.map((tagId) => sql`${tagId}`), sql`, `)})
+      )`
+    );
+  }
+
   if (filters.startDate) {
-    // Validate date format (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.startDate)) {
-      throw new Error(`Invalid startDate format: ${filters.startDate}. Expected YYYY-MM-DD format.`);
-    }
+    // Date format and validity are already validated by the schema
+    // Parse the validated date string
     const [year, month, day] = filters.startDate.split("-").map(Number);
-    // Validate parsed values are valid numbers
-    if (isNaN(year) || isNaN(month) || isNaN(day)) {
-      throw new Error(`Invalid startDate: ${filters.startDate}. Could not parse date components.`);
-    }
     const startDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-    // Validate the resulting date is valid
-    if (isNaN(startDate.getTime())) {
-      throw new Error(`Invalid startDate: ${filters.startDate}. Date is not valid.`);
-    }
     conditions.push(gte(transactions.date, startDate));
   }
 
   if (filters.endDate) {
-    // Validate date format (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.endDate)) {
-      throw new Error(`Invalid endDate format: ${filters.endDate}. Expected YYYY-MM-DD format.`);
-    }
+    // Date format and validity are already validated by the schema
+    // Parse the validated date string
     const [year, month, day] = filters.endDate.split("-").map(Number);
-    // Validate parsed values are valid numbers
-    if (isNaN(year) || isNaN(month) || isNaN(day)) {
-      throw new Error(`Invalid endDate: ${filters.endDate}. Could not parse date components.`);
-    }
     const endDate = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-    // Validate the resulting date is valid
-    if (isNaN(endDate.getTime())) {
-      throw new Error(`Invalid endDate: ${filters.endDate}. Date is not valid.`);
-    }
     conditions.push(lte(transactions.date, endDate));
   }
 
-  // Note: Search is now handled in list.ts using LEFT JOINs for better performance
-  // This function no longer handles search to avoid conflicts with the relational query API
 
   return conditions;
 }

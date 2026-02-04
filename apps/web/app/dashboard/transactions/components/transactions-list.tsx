@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { api } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { PeriodFilter } from "./period-filter-dialog";
@@ -10,6 +9,7 @@ import { AddTransactionDialog } from "./add-transaction-dialog";
 import { TransactionItem } from "./transaction-item";
 import { TransactionListSkeleton, LoadingMoreIndicator } from "./transaction-list-skeleton";
 import { EmptyState } from "./empty-state";
+import type { Transaction } from "@pesapeak/shared/types/transactions";
 
 interface TransactionsListProps {
   filter: PeriodFilter;
@@ -52,14 +52,11 @@ const formatTime = (time: string | null) => {
   return `${displayHour}:${minutes} ${ampm}`;
 };
 
-// Define types locally for now, ideally should be shared
-type Transaction = any;
-
 const PAGE_SIZE = 50;
 
 type ListItem =
   | { type: "header"; date: string; count: number; total: number; id: string }
-  | { type: "transaction"; data: Transaction; id: string; isFee?: boolean };
+  | { type: "transaction"; data: Transaction; id: string; fees?: Transaction[] };
 
 export function TransactionsList({
   filter,
@@ -75,6 +72,7 @@ export function TransactionsList({
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
+  const loaderRef = useRef<HTMLDivElement | null>(null);
 
   const { data: accounts } = api.accounts.list.useQuery();
   const { data: folders } = api.categories.list.useQuery();
@@ -171,11 +169,11 @@ export function TransactionsList({
 
     sortedDates.forEach((date) => {
       const txs = grouped[date]!;
-      
+
       // Separate parent transactions from fees
       const parentTxs = txs.filter((tx) => !tx.isFee);
       const feeTxs = txs.filter((tx) => tx.isFee);
-      
+
       // Create a map of parent transaction IDs to their fees
       const feesByParent = new Map<string, Transaction[]>();
       feeTxs.forEach((fee) => {
@@ -186,7 +184,7 @@ export function TransactionsList({
           feesByParent.get(fee.parentTransactionId)!.push(fee);
         }
       });
-      
+
       // Sort parent transactions within day
       parentTxs.sort((a, b) => {
         if (a.time && b.time) return b.time.localeCompare(a.time);
@@ -210,27 +208,18 @@ export function TransactionsList({
 
       // Add parent transactions with their fees nested
       parentTxs.forEach((tx) => {
-        items.push({
-          type: "transaction",
-          data: tx,
-          id: tx.id,
-          isFee: false,
-        });
-        
-        // Add fees for this parent transaction, sorted by time
+        // Get fees for this parent transaction, sorted by time
         const fees = feesByParent.get(tx.id) || [];
         fees.sort((a, b) => {
           if (a.time && b.time) return b.time.localeCompare(a.time);
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
-        
-        fees.forEach((fee) => {
-          items.push({
-            type: "transaction",
-            data: fee,
-            id: fee.id,
-            isFee: true,
-          });
+
+        items.push({
+          type: "transaction",
+          data: tx,
+          id: tx.id,
+          fees: fees, // Pass fees to the item
         });
       });
     });
@@ -238,40 +227,33 @@ export function TransactionsList({
     return items;
   }, [data]);
 
-  const virtualizer = useVirtualizer({
-    count: flatItems.length + (hasNextPage ? 1 : 0), // Add 1 for the loader
-    getScrollElement: () => parentRef.current,
-    estimateSize: (index) => {
-      // Loader
-      if (index >= flatItems.length) return 50;
-
-      const item = flatItems[index];
-      if (item.type === "header") return 60; // Approximate header height
-      return 88; // Approximate transaction item height
-    },
-    overscan: 5,
-  });
-
-  const virtualItems = virtualizer.getVirtualItems();
-
+  // Infinite scroll without virtualization: load next page when loader comes into view
   useEffect(() => {
-    const [lastItem] = [...virtualItems].reverse();
-    if (!lastItem) return;
+    if (!hasNextPage || isFetchingNextPage) return;
 
-    if (
-      lastItem.index >= flatItems.length - 1 &&
-      hasNextPage &&
-      !isFetchingNextPage
-    ) {
-      fetchNextPage();
-    }
-  }, [
-    hasNextPage,
-    fetchNextPage,
-    flatItems.length,
-    isFetchingNextPage,
-    virtualItems,
-  ]);
+    const loader = loaderRef.current;
+    if (!loader) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        root: null, // use viewport / window scroll
+        rootMargin: "0px 0px 200px 0px",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(loader);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const getAccountName = (accountId: string | null) => {
     if (!accountId || !accounts) return "Unknown";
@@ -294,12 +276,12 @@ export function TransactionsList({
 
   if (status === "success" && flatItems.length === 0) {
     const hasFilters = Boolean(
-      selectedAccountId || 
-      selectedCategoryId || 
-      searchQuery || 
+      selectedAccountId ||
+      selectedCategoryId ||
+      searchQuery ||
       (filter.type !== "all")
     );
-    
+
     return (
       <EmptyState
         hasFilters={hasFilters}
@@ -311,101 +293,63 @@ export function TransactionsList({
   }
 
   return (
-    <div 
-      className="w-full min-h-[400px] max-h-[calc(100vh-24rem)] sm:max-h-[calc(100vh-20rem)]" 
-      ref={parentRef} 
-      style={{ overflowY: "auto", contain: "strict", scrollBehavior: "smooth" }}
-    >
-      <div
-        style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: "100%",
-          position: "relative",
-        }}
-      >
-        {virtualItems.map((virtualItem) => {
-          const isLoader = virtualItem.index >= flatItems.length;
-
-          if (isLoader) {
-            return (
-              <div
-                key="loader"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: `${virtualItem.size}px`,
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                {isFetchingNextPage ? <LoadingMoreIndicator /> : null}
-              </div>
-            );
-          }
-
-          const item = flatItems[virtualItem.index];
-
-          return (
+    <div ref={parentRef} className="w-full">
+      <div className="w-full space-y-2">
+        {flatItems.map((item) =>
+          item.type === "header" ? (
             <div
               key={item.id}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: `${virtualItem.size}px`,
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-              className="px-1"
+              className="px-1 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2"
             >
-              {item.type === "header" ? (
-                <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-0 border-b-2 border-border/60 bg-background/95 backdrop-blur-sm pb-3 pt-6 mb-2">
-                  <h3 className="text-sm sm:text-base font-semibold text-foreground">
-                    {formatDate(item.date)}
-                  </h3>
-                  <div className="flex items-center gap-2 sm:gap-3 text-xs">
-                    <span className="text-muted-foreground font-medium">
-                      {item.count} {item.count === 1 ? "transaction" : "transactions"}
-                    </span>
-                    <span
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        item.total > 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : item.total < 0
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-muted-foreground"
-                      )}
-                    >
-                      {item.total > 0 ? "+" : item.total < 0 ? "-" : ""}
-                      {formatCurrency(
-                        Math.abs(item.total),
-                        accounts?.[0]?.currency || "USD"
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className={cn("py-1", item.isFee && "pl-4 sm:pl-6")}>
-                  <TransactionItem
-                    transaction={item.data}
-                    onClick={() => {
-                      setSelectedTransaction(item.data);
-                      setIsDetailsOpen(true);
-                    }}
-                    getAccountName={getAccountName}
-                    getCategoryName={getCategoryName}
-                    formatCurrency={formatCurrency}
-                    formatTime={formatTime}
-                    currency={accounts?.[0]?.currency || "USD"}
-                    isFee={item.isFee}
-                  />
-                </div>
-              )}
+              <h3 className="text-sm sm:text-base font-semibold text-foreground">
+                {formatDate(item.date)}
+              </h3>
+              <div className="flex items-center gap-2 sm:gap-3 text-xs">
+                <span className="text-muted-foreground font-medium">
+                  {item.count} {item.count === 1 ? "transaction" : "transactions"}
+                </span>
+                <span
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    item.total > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : item.total < 0
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-muted-foreground"
+                  )}
+                >
+                  {item.total > 0 ? "+" : item.total < 0 ? "-" : ""}
+                  {formatCurrency(
+                    Math.abs(item.total),
+                    accounts?.[0]?.currency || "USD"
+                  )}
+                </span>
+              </div>
             </div>
-          );
-        })}
+          ) : (
+            <div key={item.id} className="px-1 py-1">
+              <TransactionItem
+                transaction={item.data}
+                fees={item.fees}
+                onClick={() => {
+                  setSelectedTransaction(item.data);
+                  setIsDetailsOpen(true);
+                }}
+                getAccountName={getAccountName}
+                getCategoryName={getCategoryName}
+                formatCurrency={formatCurrency}
+                formatTime={formatTime}
+                currency={accounts?.[0]?.currency || "USD"}
+              />
+            </div>
+          )
+        )}
+
+        {hasNextPage && (
+          <div ref={loaderRef} className="py-4 flex justify-center">
+            {isFetchingNextPage ? <LoadingMoreIndicator /> : null}
+          </div>
+        )}
       </div>
 
       {/* Transaction Details Dialog */}

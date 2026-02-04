@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import fs from "node:fs/promises";
-import { transactions, categories } from "@pesapeak/db/schema";
+import { transactions, categories, transactionTags } from "@pesapeak/db/schema";
 import { authedProcedure } from "../../index";
 import { feeInputSchema, transactionOutputSchema } from "./schemas";
 import {
@@ -34,6 +34,7 @@ export const update = authedProcedure
         })
         .optional(),
       removeAttachment: z.boolean().optional(),
+      tags: z.array(z.string()).optional(),
     })
   )
   .output(transactionOutputSchema)
@@ -131,48 +132,48 @@ export const update = authedProcedure
       (tx, preFetched) => {
         const originalTransactions = [existing, ...preFetched.existingFees];
 
-      // Reverse original balance effects for the main transaction and any linked fee transactions
-      reverseTransactionBalanceEffects(tx, originalTransactions);
+        // Reverse original balance effects for the main transaction and any linked fee transactions
+        reverseTransactionBalanceEffects(tx, originalTransactions);
 
-      // Handle field updates
-      const updateValues: any = {};
+        // Handle field updates
+        const updateValues: any = {};
 
-      if (updateData.amount !== undefined) {
-        updateValues.amount = Math.round(updateData.amount * 100);
-      }
-      if (updateData.date !== undefined) {
-        // Use UTC to ensure consistent storage regardless of server timezone
-        const [year, month, day] = updateData.date.split("-").map(Number);
-        let dateObj: Date;
-        if (updateData.time) {
-          const [hours, minutes] = updateData.time.split(":").map(Number);
-          dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
-        } else {
-          dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+        if (updateData.amount !== undefined) {
+          updateValues.amount = Math.round(updateData.amount * 100);
         }
-        updateValues.date = dateObj;
-      }
-      if (updateData.time !== undefined) {
-        updateValues.time = updateData.time;
-      }
-      if (updateData.notes !== undefined) {
-        updateValues.notes = updateData.notes;
-      }
-      if (updateData.type !== undefined) {
-        updateValues.type = updateData.type;
-      }
-      if (updateData.accountId !== undefined) {
-        updateValues.accountId = updateData.accountId;
-      }
-      if (updateData.categoryId !== undefined) {
-        updateValues.categoryId = updateData.categoryId;
-      }
-      if (updateData.fromAccountId !== undefined) {
-        updateValues.fromAccountId = updateData.fromAccountId;
-      }
-      if (updateData.toAccountId !== undefined) {
-        updateValues.toAccountId = updateData.toAccountId;
-      }
+        if (updateData.date !== undefined) {
+          // Use UTC to ensure consistent storage regardless of server timezone
+          const [year, month, day] = updateData.date.split("-").map(Number);
+          let dateObj: Date;
+          if (updateData.time) {
+            const [hours, minutes] = updateData.time.split(":").map(Number);
+            dateObj = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0, 0));
+          } else {
+            dateObj = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+          }
+          updateValues.date = dateObj;
+        }
+        if (updateData.time !== undefined) {
+          updateValues.time = updateData.time;
+        }
+        if (updateData.notes !== undefined) {
+          updateValues.notes = updateData.notes;
+        }
+        if (updateData.type !== undefined) {
+          updateValues.type = updateData.type;
+        }
+        if (updateData.accountId !== undefined) {
+          updateValues.accountId = updateData.accountId;
+        }
+        if (updateData.categoryId !== undefined) {
+          updateValues.categoryId = updateData.categoryId;
+        }
+        if (updateData.fromAccountId !== undefined) {
+          updateValues.fromAccountId = updateData.fromAccountId;
+        }
+        if (updateData.toAccountId !== undefined) {
+          updateValues.toAccountId = updateData.toAccountId;
+        }
 
         // Handle attachment path if provided or removed
         if (updateData.attachment) {
@@ -180,11 +181,11 @@ export const update = authedProcedure
           updateValues.attachmentFileName = preFetched.attachmentFileName;
           updateValues.attachmentMimeType = preFetched.attachmentMimeType;
         } else if (updateData.removeAttachment) {
-        // Clear attachment metadata in DB when explicitly removing attachment
-        updateValues.attachmentPath = null;
-        updateValues.attachmentFileName = null;
-        updateValues.attachmentMimeType = null;
-      }
+          // Clear attachment metadata in DB when explicitly removing attachment
+          updateValues.attachmentPath = null;
+          updateValues.attachmentFileName = null;
+          updateValues.attachmentMimeType = null;
+        }
 
         const [updatedTx] = tx
           .update(transactions)
@@ -210,7 +211,7 @@ export const update = authedProcedure
 
           const existingFee = preFetched.existingFees[0];
 
-        if (existingFee) {
+          if (existingFee) {
             tx.update(transactions)
               .set({
                 amount: feeAmountInCents,
@@ -227,18 +228,18 @@ export const update = authedProcedure
               amount: feeAmountInCents,
               accountId: feeAccountId,
               categoryId: preFetched.feeCategoryId,
-            fromAccountId: null,
-            toAccountId: null,
-            date: updatedTx.date,
-            time: updatedTx.time,
-            notes: updatedTx.notes ? `Fee: ${updatedTx.notes}` : "Transaction fee",
-            attachmentPath: null,
-            attachmentFileName: null,
-            attachmentMimeType: null,
-            parentTransactionId: updatedTx.id,
-            isFee: true,
-          }).run();
-        }
+              fromAccountId: null,
+              toAccountId: null,
+              date: updatedTx.date,
+              time: updatedTx.time,
+              notes: updatedTx.notes ? `Fee: ${updatedTx.notes}` : "Transaction fee",
+              attachmentPath: null,
+              attachmentFileName: null,
+              attachmentMimeType: null,
+              parentTransactionId: updatedTx.id,
+              isFee: true,
+            }).run();
+          }
 
           // Apply new fee balance effect (expense from fee account)
           if (feeAccountId) {
@@ -261,6 +262,23 @@ export const update = authedProcedure
               )
             )
             .run();
+        }
+
+        // Update tags if provided
+        if (updateData.tags !== undefined) {
+          // Delete existing tags
+          tx.delete(transactionTags)
+            .where(eq(transactionTags.transactionId, id))
+            .run();
+
+          // Insert new tags
+          if (updateData.tags.length > 0) {
+            const tagValues = updateData.tags.map(tagId => ({
+              transactionId: id,
+              tagId,
+            }));
+            tx.insert(transactionTags).values(tagValues).run();
+          }
         }
 
         // Apply new balance effects for the updated main transaction
@@ -290,6 +308,20 @@ export const update = authedProcedure
       }
     }
 
+    // Fetch tags
+    const transactionTagsData = await ctx.db.query.transactionTags.findMany({
+      where: eq(transactionTags.transactionId, updated.id),
+      with: {
+        tag: true,
+      }
+    });
+
+    const tagsList = transactionTagsData.map(tt => ({
+      id: tt.tag.id,
+      name: tt.tag.name,
+      type: tt.tag.type ?? undefined,
+    }));
+
     return {
       id: updated.id,
       type: updated.type as "income" | "expense" | "transfer",
@@ -310,5 +342,6 @@ export const update = authedProcedure
       attachmentMimeType: updated.attachmentMimeType ?? null,
       createdAt: new Date(updated.createdAt ?? Date.now()).toISOString(),
       updatedAt: new Date(updated.updatedAt ?? Date.now()).toISOString(),
+      tags: tagsList,
     };
   });

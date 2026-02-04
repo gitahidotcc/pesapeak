@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 interface TransactionsSearchBarProps {
   searchQuery: string;
@@ -27,12 +26,9 @@ export function TransactionsSearchBar({
     setLocalQuery(searchQuery);
   }, [searchQuery]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isOpen && inputRef.current) {
-      // Small delay to ensure the element is rendered
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
+      inputRef.current.focus();
     }
   }, [isOpen]);
 

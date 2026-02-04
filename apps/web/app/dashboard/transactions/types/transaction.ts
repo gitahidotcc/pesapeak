@@ -23,6 +23,7 @@ export type TransactionFormData = {
   notes: string;
   attachment: File | null;
   existingAttachment: ExistingAttachment | null;
+  tags: string[];
 };
 
 export type TransactionFormErrors = Partial<Record<keyof TransactionFormData, string>>;
