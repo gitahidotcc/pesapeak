@@ -41,6 +41,12 @@ export function IncomeExpenseChart({ data, currency = "USD" }: IncomeExpenseChar
         }).format(value);
     };
 
+    const getLabelName = (dataKey: string | undefined): string => {
+        if (dataKey === "incomeValue") return "Income";
+        if (dataKey === "expenseValue") return "Expense";
+        return dataKey || "";
+    };
+
     if (data.length === 0) {
         return (
             <Card className="col-span-2 lg:col-span-1">
@@ -100,7 +106,7 @@ export function IncomeExpenseChart({ data, currency = "USD" }: IncomeExpenseChar
                                                     {payload.map((entry) => (
                                                         <div key={entry.name} className="flex flex-col">
                                                             <span className="text-[0.70rem] uppercase text-muted-foreground" style={{ color: entry.color }}>
-                                                                {entry.name}
+                                                                {entry.name || getLabelName(entry.dataKey)}
                                                             </span>
                                                             <span className="font-bold">
                                                                 {formatCurrency(entry.value as number)}

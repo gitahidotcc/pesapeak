@@ -1,5 +1,5 @@
 import { eq, gte, lte, or, sql } from "drizzle-orm";
-import { transactions, financialAccounts } from "@pesapeak/db/schema";
+import { transactions, financialAccounts, transactionTags } from "@pesapeak/db/schema";
 import type { AuthedContext } from "../../index";
 import type { PesapeakDBTransaction, DB } from "@pesapeak/db";
 import fs from "node:fs/promises";
@@ -79,6 +79,17 @@ export function buildTransactionConditions(
     conditions.push(eq(transactions.type, filters.type));
   }
 
+  if (filters.tags && filters.tags.length > 0) {
+    // Filter transactions that have at least one of the given tags (EXISTS subquery)
+    conditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM ${transactionTags}
+        WHERE ${transactionTags.transactionId} = ${transactions.id}
+        AND ${transactionTags.tagId} IN (${sql.join(filters.tags.map((tagId) => sql`${tagId}`), sql`, `)})
+      )`
+    );
+  }
+
   if (filters.startDate) {
     // Date format and validity are already validated by the schema
     // Parse the validated date string
@@ -95,8 +106,6 @@ export function buildTransactionConditions(
     conditions.push(lte(transactions.date, endDate));
   }
 
-  // Note: Search is now handled in list.ts using EXISTS subqueries, which are more efficient than multiple LEFT JOINs
-  // This function no longer handles search to avoid conflicts with the relational query API
 
   return conditions;
 }

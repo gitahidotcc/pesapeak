@@ -125,7 +125,7 @@ export function ExpenseCategoryChart({ data, currency = "USD" }: ExpenseCategory
                                                 color: categoryColor,
                                             }}
                                         >
-                                            <Icon className="h-4.5 w-4.5" />
+                                            <Icon className="h-4 w-4" />
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             {item.folderName ? (

@@ -4,6 +4,8 @@ import { eq, and, sql } from "drizzle-orm";
 import { tags, transactionTags, transactions } from "@pesapeak/db/schema";
 import { router, authedProcedure } from "../index";
 
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
 export const tagsRouter = router({
     getAll: authedProcedure.query(async ({ ctx }) => {
         const result = await ctx.db
@@ -98,16 +100,17 @@ export const tagsRouter = router({
     getAnalytics: authedProcedure
         .input(
             z.object({
-                startDate: z.string(),
-                endDate: z.string(),
+                startDate: z.string().regex(dateRegex, "startDate must be YYYY-MM-DD"),
+                endDate: z.string().regex(dateRegex, "endDate must be YYYY-MM-DD"),
                 accountId: z.string().optional(),
             })
         )
         .query(async ({ ctx, input }) => {
-            const startDate = new Date(input.startDate);
-            const endDate = new Date(input.endDate);
-            // Ensure end date covers the full day
-            endDate.setHours(23, 59, 59, 999);
+            // Parse dates in UTC to avoid timezone inconsistencies (consistent with transactions utils)
+            const [startY, startM, startD] = input.startDate.split("-").map(Number);
+            const [endY, endM, endD] = input.endDate.split("-").map(Number);
+            const startDate = new Date(Date.UTC(startY, startM - 1, startD, 0, 0, 0, 0));
+            const endDate = new Date(Date.UTC(endY, endM - 1, endD, 23, 59, 59, 999));
 
             const conditions = [
                 eq(transactions.userId, ctx.user.id),
