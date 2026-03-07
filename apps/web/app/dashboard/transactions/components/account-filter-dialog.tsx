@@ -1,13 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Wallet, ChevronDown, Check, type LucideIcon } from "lucide-react";
-import {
-  Banknote,
-  CreditCard,
-  Coins,
-  PiggyBank,
-} from "lucide-react";
+import { Wallet, ChevronDown, Check } from "lucide-react";
+import { ICON_MAP } from "@/lib/icons";
 import {
   Dialog,
   DialogContent,
@@ -17,14 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  banknote: Banknote,
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  "piggy-bank": PiggyBank,
-  coins: Coins,
-};
 
 interface Account {
   id: string;

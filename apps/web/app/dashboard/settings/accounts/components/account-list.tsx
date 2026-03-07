@@ -4,32 +4,13 @@ import { useState, useMemo } from "react";
 import type React from "react";
 import { api } from "@/lib/trpc";
 import {
-    Banknote,
-    CreditCard,
-    Coins,
     Wallet,
-    PiggyBank,
-    Landmark,
-    Building,
-    Building2,
-    Home,
-    Briefcase,
-    ShoppingCart,
-    TrendingUp,
-    DollarSign,
-    Euro,
-    Bitcoin,
-    Smartphone,
-    Car,
-    Plane,
-    Gift,
-    Heart,
-    type LucideIcon,
     Pencil,
     Trash2,
     Search,
     ArrowRightLeft,
 } from "lucide-react";
+import { ICON_MAP } from "@/lib/icons";
 import { Input } from "@/components/ui/input";
 import { EditAccountDialog } from "./edit-account-dialog";
 import { DeleteAccountDialog } from "./delete-account-dialog";
@@ -48,29 +29,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateAccountForm } from "./create-account-form";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-    banknote: Banknote,
-    wallet: Wallet,
-    "credit-card": CreditCard,
-    "piggy-bank": PiggyBank,
-    coins: Coins,
-    landmark: Landmark,
-    building: Building,
-    "building-2": Building2,
-    home: Home,
-    briefcase: Briefcase,
-    "shopping-cart": ShoppingCart,
-    "trending-up": TrendingUp,
-    "dollar-sign": DollarSign,
-    euro: Euro,
-    bitcoin: Bitcoin,
-    smartphone: Smartphone,
-    car: Car,
-    plane: Plane,
-    gift: Gift,
-    heart: Heart,
-};
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
     savings: "Savings",

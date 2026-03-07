@@ -1,29 +1,8 @@
 "use client";
 
 import type React from "react";
-import { Pencil, Trash2, type LucideIcon } from "lucide-react";
-import {
-    Banknote,
-    Wallet,
-    CreditCard,
-    PiggyBank,
-    Coins,
-    Landmark,
-    Building,
-    Building2,
-    Home,
-    Briefcase,
-    ShoppingCart,
-    TrendingUp,
-    DollarSign,
-    Euro,
-    Bitcoin,
-    Smartphone,
-    Car,
-    Plane,
-    Gift,
-    Heart,
-} from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import { ICON_MAP, DEFAULT_ICON } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import type { Category } from "../types/categories";
 
@@ -63,29 +42,6 @@ const highlightText = (text: string, query: string): React.ReactNode => {
     return parts.length > 0 ? <>{parts}</> : text;
 };
 
-const ICON_MAP: Record<string, LucideIcon> = {
-    banknote: Banknote,
-    wallet: Wallet,
-    "credit-card": CreditCard,
-    "piggy-bank": PiggyBank,
-    coins: Coins,
-    landmark: Landmark,
-    building: Building,
-    "building-2": Building2,
-    home: Home,
-    briefcase: Briefcase,
-    "shopping-cart": ShoppingCart,
-    "trending-up": TrendingUp,
-    "dollar-sign": DollarSign,
-    euro: Euro,
-    bitcoin: Bitcoin,
-    smartphone: Smartphone,
-    car: Car,
-    plane: Plane,
-    gift: Gift,
-    heart: Heart,
-};
-
 interface CategoryItemProps {
     category: Category;
     searchQuery?: string;
@@ -95,7 +51,7 @@ interface CategoryItemProps {
 }
 
 export function CategoryItem({ category, searchQuery = "", onEdit, onDelete, onClick }: CategoryItemProps) {
-    const Icon = ICON_MAP[category.icon] || Banknote;
+    const Icon = ICON_MAP[category.icon] || DEFAULT_ICON;
 
     return (
         <div 

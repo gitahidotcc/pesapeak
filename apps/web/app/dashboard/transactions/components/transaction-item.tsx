@@ -1,53 +1,6 @@
-import {
-    Banknote,
-    Wallet,
-    CreditCard,
-    PiggyBank,
-    Coins,
-    Landmark,
-    Building,
-    Building2,
-    Home,
-    Briefcase,
-    ShoppingCart,
-    TrendingUp,
-    DollarSign,
-    Euro,
-    Bitcoin,
-    Smartphone,
-    Car,
-    Plane,
-    Gift,
-    Heart,
-    Plus,
-    Minus,
-    ArrowRightLeft,
-    type LucideIcon,
-} from "lucide-react";
+import { Plus, Minus, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-    banknote: Banknote,
-    wallet: Wallet,
-    "credit-card": CreditCard,
-    "piggy-bank": PiggyBank,
-    coins: Coins,
-    landmark: Landmark,
-    building: Building,
-    "building-2": Building2,
-    home: Home,
-    briefcase: Briefcase,
-    "shopping-cart": ShoppingCart,
-    "trending-up": TrendingUp,
-    "dollar-sign": DollarSign,
-    euro: Euro,
-    bitcoin: Bitcoin,
-    smartphone: Smartphone,
-    car: Car,
-    plane: Plane,
-    gift: Gift,
-    heart: Heart,
-};
+import { ICON_MAP } from "@/lib/icons";
 
 export interface TransactionItemProps {
     transaction: any; // Using any for now to avoid circular dependency issues, ideally should be a shared type

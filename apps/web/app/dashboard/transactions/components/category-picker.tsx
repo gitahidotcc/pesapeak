@@ -1,28 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Check, Banknote, type LucideIcon } from "lucide-react";
-import {
-  Wallet,
-  CreditCard,
-  PiggyBank,
-  Coins,
-  Landmark,
-  Building,
-  Building2,
-  Home,
-  Briefcase,
-  ShoppingCart,
-  TrendingUp,
-  DollarSign,
-  Euro,
-  Bitcoin,
-  Smartphone,
-  Car,
-  Plane,
-  Gift,
-  Heart,
-} from "lucide-react";
+import { Search, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,30 +9,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ICON_MAP, DEFAULT_ICON } from "@/lib/icons";
 import { cn } from "@/lib/utils";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  banknote: Banknote,
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  "piggy-bank": PiggyBank,
-  coins: Coins,
-  landmark: Landmark,
-  building: Building,
-  "building-2": Building2,
-  home: Home,
-  briefcase: Briefcase,
-  "shopping-cart": ShoppingCart,
-  "trending-up": TrendingUp,
-  "dollar-sign": DollarSign,
-  euro: Euro,
-  bitcoin: Bitcoin,
-  smartphone: Smartphone,
-  car: Car,
-  plane: Plane,
-  gift: Gift,
-  heart: Heart,
-};
 
 interface Category {
   id: string;
@@ -82,7 +39,7 @@ export function CategoryPicker({
   const [search, setSearch] = useState("");
 
   const selectedCategory = categories.find((cat) => cat.id === selectedCategoryId);
-  const Icon = selectedCategory ? ICON_MAP[selectedCategory.icon] || Banknote : Banknote;
+  const Icon = selectedCategory ? ICON_MAP[selectedCategory.icon] || DEFAULT_ICON : DEFAULT_ICON;
 
   const filteredCategories = categories.filter((category) => {
     if (!search.trim()) return true;
@@ -178,7 +135,7 @@ export function CategoryPicker({
                     </p>
                     <div className="space-y-1">
                       {folderCategories.map((category) => {
-                        const CategoryIcon = ICON_MAP[category.icon] || Banknote;
+                        const CategoryIcon = ICON_MAP[category.icon] || DEFAULT_ICON;
                         const isSelected = selectedCategoryId === category.id;
                         return (
                           <button

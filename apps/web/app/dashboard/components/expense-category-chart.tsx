@@ -1,53 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-    Banknote,
-    Wallet,
-    CreditCard,
-    PiggyBank,
-    Coins,
-    Landmark,
-    Building,
-    Building2,
-    Home,
-    Briefcase,
-    ShoppingCart,
-    TrendingUp,
-    DollarSign,
-    Euro,
-    Bitcoin,
-    Smartphone,
-    Car,
-    Plane,
-    Gift,
-    Heart,
-    type LucideIcon,
-} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-    banknote: Banknote,
-    wallet: Wallet,
-    "credit-card": CreditCard,
-    "piggy-bank": PiggyBank,
-    coins: Coins,
-    landmark: Landmark,
-    building: Building,
-    "building-2": Building2,
-    home: Home,
-    briefcase: Briefcase,
-    "shopping-cart": ShoppingCart,
-    "trending-up": TrendingUp,
-    "dollar-sign": DollarSign,
-    euro: Euro,
-    bitcoin: Bitcoin,
-    smartphone: Smartphone,
-    car: Car,
-    plane: Plane,
-    gift: Gift,
-    heart: Heart,
-};
+import { ICON_MAP, DEFAULT_ICON } from "@/lib/icons";
 
 interface ExpenseCategoryChartProps {
     data: {
@@ -77,8 +32,8 @@ export function ExpenseCategoryChart({ data, currency = "USD" }: ExpenseCategory
     };
 
     const getCategoryIcon = (iconName: string | null) => {
-        if (!iconName) return Banknote;
-        const Icon = ICON_MAP[iconName] || Banknote;
+        if (!iconName) return DEFAULT_ICON;
+        const Icon = ICON_MAP[iconName] || DEFAULT_ICON;
         return Icon;
     };
 

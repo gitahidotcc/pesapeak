@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Check, Wallet, type LucideIcon } from "lucide-react";
-import {
-  Banknote,
-  CreditCard,
-  Coins,
-  PiggyBank,
-} from "lucide-react";
+import { Search, Check, Wallet } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,14 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  banknote: Banknote,
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  "piggy-bank": PiggyBank,
-  coins: Coins,
-};
+import { ICON_MAP } from "@/lib/icons";
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   savings: "Savings",

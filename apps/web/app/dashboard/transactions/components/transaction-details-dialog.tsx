@@ -1,32 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, X, type LucideIcon } from "lucide-react";
-import {
-  Banknote,
-  Wallet,
-  CreditCard,
-  PiggyBank,
-  Coins,
-  Landmark,
-  Building,
-  Building2,
-  Home,
-  Briefcase,
-  ShoppingCart,
-  TrendingUp,
-  DollarSign,
-  Euro,
-  Bitcoin,
-  Smartphone,
-  Car,
-  Plane,
-  Gift,
-  Heart,
-  ArrowRightLeft,
-  Plus,
-  Minus,
-} from "lucide-react";
+import { Edit, Trash2, X } from "lucide-react";
+import { ArrowRightLeft, Plus, Minus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -40,29 +16,7 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { Transaction } from "@pesapeak/shared/types/transactions";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  banknote: Banknote,
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  "piggy-bank": PiggyBank,
-  coins: Coins,
-  landmark: Landmark,
-  building: Building,
-  "building-2": Building2,
-  home: Home,
-  briefcase: Briefcase,
-  "shopping-cart": ShoppingCart,
-  "trending-up": TrendingUp,
-  "dollar-sign": DollarSign,
-  euro: Euro,
-  bitcoin: Bitcoin,
-  smartphone: Smartphone,
-  car: Car,
-  plane: Plane,
-  gift: Gift,
-  heart: Heart,
-};
+import { ICON_MAP } from "@/lib/icons";
 
 interface TransactionDetailsDialogProps {
   transaction: Transaction | null;

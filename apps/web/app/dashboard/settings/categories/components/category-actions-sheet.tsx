@@ -1,57 +1,13 @@
 "use client";
 
-import { Pencil, FileText, Trash2, X, type LucideIcon } from "lucide-react";
-import {
-    Banknote,
-    Wallet,
-    CreditCard,
-    PiggyBank,
-    Coins,
-    Landmark,
-    Building,
-    Building2,
-    Home,
-    Briefcase,
-    ShoppingCart,
-    TrendingUp,
-    DollarSign,
-    Euro,
-    Bitcoin,
-    Smartphone,
-    Car,
-    Plane,
-    Gift,
-    Heart,
-} from "lucide-react";
+import { Pencil, FileText, Trash2, X } from "lucide-react";
 import {
     Dialog,
     DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ICON_MAP, DEFAULT_ICON } from "@/lib/icons";
 import type { Category } from "../types/categories";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-    banknote: Banknote,
-    wallet: Wallet,
-    "credit-card": CreditCard,
-    "piggy-bank": PiggyBank,
-    coins: Coins,
-    landmark: Landmark,
-    building: Building,
-    "building-2": Building2,
-    home: Home,
-    briefcase: Briefcase,
-    "shopping-cart": ShoppingCart,
-    "trending-up": TrendingUp,
-    "dollar-sign": DollarSign,
-    euro: Euro,
-    bitcoin: Bitcoin,
-    smartphone: Smartphone,
-    car: Car,
-    plane: Plane,
-    gift: Gift,
-    heart: Heart,
-};
 
 interface CategoryActionsSheetProps {
     category: Category | null;
@@ -72,7 +28,7 @@ export function CategoryActionsSheet({
 }: CategoryActionsSheetProps) {
     if (!category) return null;
 
-    const Icon = ICON_MAP[category.icon] || Banknote;
+    const Icon = ICON_MAP[category.icon] || DEFAULT_ICON;
 
     const handleAction = (action: () => void) => {
         action();

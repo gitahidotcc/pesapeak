@@ -6,52 +6,7 @@ import { StepComponentProps } from "@/app/onboarding/types/step-component";
 import { STARTER_CATEGORIES, type StarterFolder } from "@/app/onboarding/lib/starter-categories";
 import { api } from "@/lib/trpc";
 import { toast } from "sonner";
-import {
-  Banknote,
-  Wallet,
-  CreditCard,
-  PiggyBank,
-  Coins,
-  Landmark,
-  Building,
-  Building2,
-  Home,
-  Briefcase,
-  ShoppingCart,
-  TrendingUp,
-  DollarSign,
-  Euro,
-  Bitcoin,
-  Smartphone,
-  Car,
-  Plane,
-  Gift,
-  Heart,
-  type LucideIcon,
-} from "lucide-react";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  banknote: Banknote,
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  "piggy-bank": PiggyBank,
-  coins: Coins,
-  landmark: Landmark,
-  building: Building,
-  "building-2": Building2,
-  home: Home,
-  briefcase: Briefcase,
-  "shopping-cart": ShoppingCart,
-  "trending-up": TrendingUp,
-  "dollar-sign": DollarSign,
-  euro: Euro,
-  bitcoin: Bitcoin,
-  smartphone: Smartphone,
-  car: Car,
-  plane: Plane,
-  gift: Gift,
-  heart: Heart,
-};
+import { ICON_MAP, DEFAULT_ICON } from "@/lib/icons";
 
 type FolderSelection = {
   folder: StarterFolder;
@@ -202,7 +157,7 @@ export function CategoriesStep({ context }: StepComponentProps) {
   }, [folderSelections]);
 
   const FolderIcon = (iconName: string) => {
-    const Icon = ICON_MAP[iconName] || Banknote;
+    const Icon = ICON_MAP[iconName] || DEFAULT_ICON;
     return Icon;
   };
 

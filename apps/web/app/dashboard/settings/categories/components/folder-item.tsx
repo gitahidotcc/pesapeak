@@ -3,29 +3,8 @@
 import { useState } from "react";
 import type React from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, type LucideIcon } from "lucide-react";
-import {
-    Banknote,
-    Wallet,
-    CreditCard,
-    PiggyBank,
-    Coins,
-    Landmark,
-    Building,
-    Building2,
-    Home,
-    Briefcase,
-    ShoppingCart,
-    TrendingUp,
-    DollarSign,
-    Euro,
-    Bitcoin,
-    Smartphone,
-    Car,
-    Plane,
-    Gift,
-    Heart,
-} from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import { ICON_MAP, DEFAULT_ICON } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { CategoryItem } from "./category-item";
 import { AddCategoryDialog } from "./add-category-dialog";
@@ -72,29 +51,6 @@ const highlightText = (text: string, query: string): React.ReactNode => {
     return parts.length > 0 ? <>{parts}</> : text;
 };
 
-const ICON_MAP: Record<string, LucideIcon> = {
-    banknote: Banknote,
-    wallet: Wallet,
-    "credit-card": CreditCard,
-    "piggy-bank": PiggyBank,
-    coins: Coins,
-    landmark: Landmark,
-    building: Building,
-    "building-2": Building2,
-    home: Home,
-    briefcase: Briefcase,
-    "shopping-cart": ShoppingCart,
-    "trending-up": TrendingUp,
-    "dollar-sign": DollarSign,
-    euro: Euro,
-    bitcoin: Bitcoin,
-    smartphone: Smartphone,
-    car: Car,
-    plane: Plane,
-    gift: Gift,
-    heart: Heart,
-};
-
 interface FolderItemProps {
     folder: Folder;
     searchQuery?: string;
@@ -122,7 +78,7 @@ export function FolderItem({
     const [categoryActionsOpen, setCategoryActionsOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
-    const Icon = ICON_MAP[folder.icon] || Banknote;
+    const Icon = ICON_MAP[folder.icon] || DEFAULT_ICON;
 
     const handleEditFolder = (folder: Folder, data: { name: string; icon: string; color: string }) => {
         onEditFolder(folder, data);

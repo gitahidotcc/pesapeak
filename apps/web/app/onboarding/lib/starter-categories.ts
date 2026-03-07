@@ -18,10 +18,55 @@ export type StarterFolder = {
 
 export const STARTER_CATEGORIES: StarterFolder[] = [
   {
+    name: "School",
+    icon: "graduation-cap",
+    color: "#6366F1", // indigo
+    categories: [{ name: "Administrative fees" }],
+  },
+  {
+    name: "Funds Held for others",
+    icon: "hand-coins",
+    color: "#14B8A6", // teal
+    categories: [
+      { name: "Family" },
+      { name: "Colleagues" },
+    ],
+  },
+  {
+    name: "Income",
+    icon: "briefcase",
+    color: "#22C55E", // green
+    categories: [
+      { name: "Family" },
+      { name: "Salary" },
+      { name: "Freelancing" },
+    ],
+  },
+  {
+    name: "Household & Family",
+    icon: "users",
+    color: "#A855F7", // violet
+    categories: [
+      { name: "Cousins" },
+      { name: "Shopping" },
+    ],
+  },
+  {
+    name: "Subscriptions",
+    icon: "repeat",
+    color: "#F43F5E", // rose
+    categories: [
+      { name: "Entertainment" },
+      { name: "Cloud Storage" },
+    ],
+  },
+  {
     name: "Transport",
     icon: "car",
     color: "#3B82F6", // blue
     categories: [
+      { name: "Parking" },
+      { name: "Driving License" },
       { name: "Fuel" },
       { name: "Matatu/Uber/Bolt" },
       { name: "Repairs" },
@@ -30,9 +75,10 @@ export const STARTER_CATEGORIES: StarterFolder[] = [
   },
   {
     name: "Food",
-    icon: "gift",
+    icon: "utensils-crossed",
     color: "#EF4444", // red
     categories: [
+      { name: "Snacks" },
       { name: "Groceries" },
       { name: "Restaurants/Takeaway" },
       { name: "Fast Food" },
@@ -40,9 +86,10 @@ export const STARTER_CATEGORIES: StarterFolder[] = [
   },
   {
     name: "Utilities",
-    icon: "home",
+    icon: "zap",
     color: "#F59E0B", // amber
     categories: [
+      { name: "Airtime" },
       { name: "Electricity" },
       { name: "Water" },
       { name: "Internet" },
@@ -54,6 +101,8 @@ export const STARTER_CATEGORIES: StarterFolder[] = [
     icon: "home",
     color: "#8B5CF6", // purple
     categories: [
+      { name: "Laundry" },
+      { name: "Shopping" },
       { name: "Rent" },
       { name: "Repairs" },
       { name: "Furniture/Appliances" },
@@ -71,7 +120,7 @@ export const STARTER_CATEGORIES: StarterFolder[] = [
   },
   {
     name: "Entertainment",
-    icon: "gift",
+    icon: "film",
     color: "#10B981", // green
     categories: [
       { name: "Cinema/Events" },
@@ -81,7 +130,7 @@ export const STARTER_CATEGORIES: StarterFolder[] = [
   },
   {
     name: "Personal_Care",
-    icon: "heart",
+    icon: "sparkles",
     color: "#F97316", // orange
     categories: [
       { name: "Hair/Beauty" },

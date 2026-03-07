@@ -1,13 +1,6 @@
 "use client";
 
-import { Pencil, FileText, Trash2, X, type LucideIcon } from "lucide-react";
-import {
-    Banknote,
-    Wallet,
-    CreditCard,
-    PiggyBank,
-    Coins,
-} from "lucide-react";
+import { Pencil, FileText, Trash2, X, Wallet } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -15,19 +8,12 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ICON_MAP } from "@/lib/icons";
 import type { AppRouter } from "@pesapeak/trpc/routers/_app";
 import { inferRouterOutputs } from "@trpc/server";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type Account = RouterOutputs["accounts"]["list"][number];
-
-const ICON_MAP: Record<string, LucideIcon> = {
-    banknote: Banknote,
-    wallet: Wallet,
-    "credit-card": CreditCard,
-    "piggy-bank": PiggyBank,
-    coins: Coins,
-};
 
 interface AccountActionsSheetProps {
     account: Account | null;

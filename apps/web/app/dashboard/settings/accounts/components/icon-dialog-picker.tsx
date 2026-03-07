@@ -1,29 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Check, type LucideIcon } from "lucide-react";
-import {
-    Banknote,
-    Wallet,
-    CreditCard,
-    PiggyBank,
-    Coins,
-    Landmark,
-    Building,
-    Building2,
-    Home,
-    Briefcase,
-    ShoppingCart,
-    TrendingUp,
-    DollarSign,
-    Euro,
-    Bitcoin,
-    Smartphone,
-    Car,
-    Plane,
-    Gift,
-    Heart,
-} from "lucide-react";
+import { Search, Check } from "lucide-react";
+import { ICON_OPTIONS, DEFAULT_ICON } from "@/lib/icons";
 import {
     Dialog,
     DialogContent,
@@ -32,37 +11,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 
-const ICONS: Array<{ value: string; label: string; Icon: LucideIcon; category: string }> = [
-    // Banking
-    { value: "banknote", label: "Banknote", Icon: Banknote, category: "Banking" },
-    { value: "wallet", label: "Wallet", Icon: Wallet, category: "Banking" },
-    { value: "credit-card", label: "Credit Card", Icon: CreditCard, category: "Banking" },
-    { value: "piggy-bank", label: "Piggy Bank", Icon: PiggyBank, category: "Banking" },
-    { value: "coins", label: "Coins", Icon: Coins, category: "Banking" },
-    { value: "landmark", label: "Bank", Icon: Landmark, category: "Banking" },
-
-    // Business
-    { value: "building", label: "Building", Icon: Building, category: "Business" },
-    { value: "building-2", label: "Office", Icon: Building2, category: "Business" },
-    { value: "briefcase", label: "Briefcase", Icon: Briefcase, category: "Business" },
-
-    // Personal
-    { value: "home", label: "Home", Icon: Home, category: "Personal" },
-    { value: "shopping-cart", label: "Shopping", Icon: ShoppingCart, category: "Personal" },
-    { value: "car", label: "Car", Icon: Car, category: "Personal" },
-    { value: "plane", label: "Travel", Icon: Plane, category: "Personal" },
-    { value: "gift", label: "Gift", Icon: Gift, category: "Personal" },
-    { value: "heart", label: "Heart", Icon: Heart, category: "Personal" },
-
-    // Finance
-    { value: "trending-up", label: "Investment", Icon: TrendingUp, category: "Finance" },
-    { value: "dollar-sign", label: "Dollar", Icon: DollarSign, category: "Finance" },
-    { value: "euro", label: "Euro", Icon: Euro, category: "Finance" },
-    { value: "bitcoin", label: "Crypto", Icon: Bitcoin, category: "Finance" },
-
-    // Digital
-    { value: "smartphone", label: "Mobile Money", Icon: Smartphone, category: "Digital" },
-];
+const ICONS = ICON_OPTIONS;
 
 interface IconDialogPickerProps {
     value: string;
@@ -98,7 +47,7 @@ export function IconDialogPicker({ value, onSelect }: IconDialogPickerProps) {
         setSearch("");
     };
 
-    const SelectedIconComponent = selectedIcon?.Icon || Banknote;
+    const SelectedIconComponent = selectedIcon?.Icon || DEFAULT_ICON;
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
