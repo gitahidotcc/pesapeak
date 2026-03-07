@@ -10,7 +10,7 @@
   },
   "files": [
     "oxlint-base.json",
-    "oxlint-react.json", 
+    "oxlint-react.json",
     "oxlint-nextjs.json"
   ],
   "scripts": {
@@ -20,8 +20,8 @@
     "typecheck": "echo 'No TypeScript files to check'"
   },
   "devDependencies": {
-    "@pesapeak/prettier-config": "workspace:^0.1.0",
-    "prettier": "^3.4.2"
+    "@pesapeak/prettier-config": "workspace:^",
+    "prettier": "^3.8.1"
   },
   "prettier": "@pesapeak/prettier-config"
 }

@@ -13,10 +13,10 @@
     "lint": "oxlint ."
   },
   "dependencies": {
-    "@hono/trpc-server": "^0.4.0",
+    "@hono/trpc-server": "^0.4.2",
     "@pesapeak/shared": "workspace:*",
     "@pesapeak/trpc": "workspace:*",
-    "hono": "^4.10.3"
+    "hono": "^4.12.5"
   },
   "devDependencies": {
     "@pesapeak/oxlint-config": "workspace:^",

@@ -11,15 +11,15 @@
   "dependencies": {
     "@pesapeak/db": "workspace:*",
     "@pesapeak/shared": "workspace:*",
-    "bcryptjs": "^3.0.2",
-    "nodemailer": "^7.0.9",
+    "bcryptjs": "^3.0.3",
+    "nodemailer": "^7.0.13",
     "prom-client": "^15.1.3",
     "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {
     "@pesapeak/prettier-config": "workspace:*",
     "@pesapeak/tsconfig": "workspace:*",
-    "@types/nodemailer": "^7.0.2"
+    "@types/nodemailer": "^7.0.11"
   },
   "prettier": "@pesapeak/prettier-config"
 }

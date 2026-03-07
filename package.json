@@ -22,11 +22,11 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@pesapeak/prettier-config": "workspace:^0.1.0",
+    "@pesapeak/prettier-config": "workspace:^",
     "husky": "^9.1.7",
-    "oxlint": "^1.19.0",
-    "prettier": "^3.6.2",
-    "turbo": "^2.5.8",
+    "oxlint": "^1.51.0",
+    "prettier": "^3.8.1",
+    "turbo": "^2.8.14",
     "typescript": "5.9.2"
   },
   "prettier": "@pesapeak/prettier-config",
@@ -36,7 +36,9 @@
   },
   "pnpm": {
     "overrides": {
-      "lightningcss": "1.30.1"
+      "lightningcss": "1.30.1",
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3"
     }
   }
 }

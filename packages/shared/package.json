@@ -11,13 +11,13 @@
   "devDependencies": {
     "@pesapeak/prettier-config": "workspace:*",
     "@pesapeak/tsconfig": "workspace:*",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.19.15",
     "typescript": "5.9.2"
   },
   "prettier": "@pesapeak/prettier-config",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.908.0",
-    "glob": "^11.0.3",
-    "winston": "^3.18.3"
+    "@aws-sdk/client-s3": "^3.1004.0",
+    "glob": "^11.1.0",
+    "winston": "^3.19.0"
   }
 }

@@ -41,10 +41,11 @@ export function IncomeExpenseChart({ data, currency = "USD" }: IncomeExpenseChar
         }).format(value);
     };
 
-    const getLabelName = (dataKey: string | undefined): string => {
+    const getLabelName = (dataKey: string | number | ((obj: unknown) => unknown) | undefined): string => {
+        if (typeof dataKey !== "string") return "";
         if (dataKey === "incomeValue") return "Income";
         if (dataKey === "expenseValue") return "Expense";
-        return dataKey || "";
+        return dataKey;
     };
 
     if (data.length === 0) {
