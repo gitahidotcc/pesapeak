@@ -12,34 +12,32 @@ import {
 } from "./utils";
 import { createId } from "@paralleldrive/cuid2";
 
-export const update = authedProcedure
-  .input(
-    z.object({
-      id: z.string(),
-      type: z.enum(["income", "expense", "transfer"]).optional(),
-      amount: z.number().min(0.01).optional(),
-      accountId: z.string().optional(),
-      categoryId: z.string().optional(),
-      fromAccountId: z.string().optional(),
-      toAccountId: z.string().optional(),
-      date: z.string().optional(),
-      time: z.string().optional(),
-      notes: z.string().optional(),
-      fee: feeInputSchema,
-      attachment: z
-        .object({
-          fileName: z.string(),
-          mimeType: z.string(),
-          data: z.string(),
-        })
-        .optional(),
-      removeAttachment: z.boolean().optional(),
-      tags: z.array(z.string()).optional(),
-      locationName: z.string().nullable().optional(),
-      latitude: z.number().min(-90).max(90).nullable().optional(),
-      longitude: z.number().min(-180).max(180).nullable().optional(),
-    })
-  )
+const updateInputSchema = z
+  .object({
+    id: z.string(),
+    type: z.enum(["income", "expense", "transfer"]).optional(),
+    amount: z.number().min(0.01).optional(),
+    accountId: z.string().optional(),
+    categoryId: z.string().optional(),
+    fromAccountId: z.string().optional(),
+    toAccountId: z.string().optional(),
+    date: z.string().optional(),
+    time: z.string().optional(),
+    notes: z.string().optional(),
+    fee: feeInputSchema,
+    attachment: z
+      .object({
+        fileName: z.string(),
+        mimeType: z.string(),
+        data: z.string(),
+      })
+      .optional(),
+    removeAttachment: z.boolean().optional(),
+    tags: z.array(z.string()).optional(),
+    locationName: z.string().nullable().optional(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
+  })
   .refine(
     (data) => {
       const hasCoords =
@@ -49,7 +47,10 @@ export const update = authedProcedure
       return typeof data.locationName === "string" && data.locationName.trim().length > 0;
     },
     { message: "Location name is required when coordinates are provided", path: ["locationName"] }
-  )
+  );
+
+export const update = authedProcedure
+  .input(updateInputSchema)
   .output(transactionOutputSchema)
   .mutation(async ({ ctx, input }) => {
     const { id, ...updateData } = input;
