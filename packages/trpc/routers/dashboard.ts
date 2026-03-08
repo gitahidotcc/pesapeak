@@ -366,6 +366,122 @@ export const dashboardRouter = router({
 
             return results;
         }),
+    // Spending by area: bar chart. Percentages are of located expenses only (totalLocatedAmount).
+    expenseByLocation: authedProcedure
+        .input(historyInputSchema)
+        .output(
+            z.object({
+                items: z.array(
+                    z.object({
+                        locationName: z.string(),
+                        amount: z.number(),
+                        percentage: z.number(),
+                        transactionCount: z.number(),
+                    })
+                ),
+                totalLocatedAmount: z.number(),
+            })
+        )
+        .query(async ({ ctx, input }) => {
+            const startDateTime = new Date(input.startDate);
+            startDateTime.setUTCHours(0, 0, 0, 0);
+            const endDateTime = new Date(input.endDate);
+            endDateTime.setUTCHours(23, 59, 59, 999);
+
+            const transactionConditions = [
+                eq(transactions.userId, ctx.user.id),
+                eq(transactions.type, "expense"),
+                gte(transactions.date, startDateTime),
+                lte(transactions.date, endDateTime),
+                sql`${transactions.locationName} IS NOT NULL AND TRIM(${transactions.locationName}) != ''`,
+            ];
+            if (input.accountId) {
+                transactionConditions.push(eq(transactions.accountId, input.accountId));
+            }
+
+            const locationBreakdown = await ctx.db
+                .select({
+                    locationName: sql<string>`MAX(${transactions.locationName})`,
+                    amount: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+                    transactionCount: sql<number>`COUNT(*)`,
+                })
+                .from(transactions)
+                .where(and(...transactionConditions))
+                .groupBy(sql`LOWER(TRIM(${transactions.locationName}))`)
+                .orderBy(desc(sql<number>`COALESCE(SUM(${transactions.amount}), 0)`));
+
+            const totalLocatedAmount = locationBreakdown.reduce(
+                (sum, item) => sum + Number(item.amount),
+                0
+            );
+
+            const items = locationBreakdown.map((item) => {
+                const amount = Number(item.amount);
+                const percentage =
+                    totalLocatedAmount > 0 ? (amount / totalLocatedAmount) * 100 : 0;
+                return {
+                    locationName: item.locationName ?? "",
+                    amount,
+                    percentage: Math.round(percentage * 100) / 100,
+                    transactionCount: Number(item.transactionCount),
+                };
+            });
+
+            return { items, totalLocatedAmount };
+        }),
+    // Map view: locations with coordinates; circle markers use AVG(lat/lng) per group.
+    expenseByLocationMap: authedProcedure
+        .input(historyInputSchema)
+        .output(
+            z.array(
+                z.object({
+                    locationName: z.string(),
+                    amount: z.number(),
+                    latitude: z.number(),
+                    longitude: z.number(),
+                    transactionCount: z.number(),
+                })
+            )
+        )
+        .query(async ({ ctx, input }) => {
+            const startDateTime = new Date(input.startDate);
+            startDateTime.setUTCHours(0, 0, 0, 0);
+            const endDateTime = new Date(input.endDate);
+            endDateTime.setUTCHours(23, 59, 59, 999);
+
+            const transactionConditions = [
+                eq(transactions.userId, ctx.user.id),
+                eq(transactions.type, "expense"),
+                gte(transactions.date, startDateTime),
+                lte(transactions.date, endDateTime),
+                sql`${transactions.locationName} IS NOT NULL AND TRIM(${transactions.locationName}) != ''`,
+                sql`${transactions.latitude} IS NOT NULL AND ${transactions.longitude} IS NOT NULL`,
+            ];
+            if (input.accountId) {
+                transactionConditions.push(eq(transactions.accountId, input.accountId));
+            }
+
+            const mapData = await ctx.db
+                .select({
+                    locationName: sql<string>`MAX(${transactions.locationName})`,
+                    amount: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+                    latitude: sql<number>`AVG(${transactions.latitude})`,
+                    longitude: sql<number>`AVG(${transactions.longitude})`,
+                    transactionCount: sql<number>`COUNT(*)`,
+                })
+                .from(transactions)
+                .where(and(...transactionConditions))
+                .groupBy(sql`LOWER(TRIM(${transactions.locationName}))`)
+                .orderBy(desc(sql<number>`COALESCE(SUM(${transactions.amount}), 0)`));
+
+            return mapData.map((item) => ({
+                locationName: item.locationName ?? "",
+                amount: Number(item.amount),
+                latitude: Number(item.latitude),
+                longitude: Number(item.longitude),
+                transactionCount: Number(item.transactionCount),
+            }));
+        }),
 });
 
 function revertTransaction(currentBalance: number, txn: any, targetAccountId?: string): number {

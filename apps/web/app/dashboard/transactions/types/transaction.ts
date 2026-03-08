@@ -24,6 +24,9 @@ export type TransactionFormData = {
   attachment: File | null;
   existingAttachment: ExistingAttachment | null;
   tags: string[];
+  locationName: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type TransactionFormErrors = Partial<Record<keyof TransactionFormData, string>>;

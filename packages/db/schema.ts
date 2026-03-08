@@ -3,6 +3,7 @@ import {
   index,
   integer,
   primaryKey,
+  real,
   sqliteTable,
   text,
   unique,
@@ -371,6 +372,10 @@ export const transactions = sqliteTable(
     attachmentPath: text("attachmentPath"), // Path to uploaded file
     attachmentFileName: text("attachmentFileName"), // Original filename
     attachmentMimeType: text("attachmentMimeType"), // MIME type
+    // Location (optional; name required if lat/lng present)
+    locationName: text("locationName"),
+    latitude: real("latitude"),
+    longitude: real("longitude"),
     createdAt: createdAtField(),
     updatedAt: updatedAtField(),
   },
@@ -384,6 +389,7 @@ export const transactions = sqliteTable(
     parentTransactionIdIdx: index("transactions_parentTransactionId_idx").on(
       table.parentTransactionId
     ),
+    locationNameIdx: index("transactions_locationName_idx").on(table.locationName),
   })
 );
 

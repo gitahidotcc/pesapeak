@@ -40,6 +40,9 @@ const getInitialFormData = (): TransactionFormData => {
     attachment: null,
     existingAttachment: null,
     tags: [],
+    locationName: "",
+    latitude: null,
+    longitude: null,
   };
 };
 
@@ -97,6 +100,9 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
         attachment: null, // New file selection (if user wants to replace)
         existingAttachment, // Existing attachment info for display
         tags: editingTransaction.tags?.map(t => t.id) || [],
+        locationName: editingTransaction.locationName ?? "",
+        latitude: editingTransaction.latitude ?? null,
+        longitude: editingTransaction.longitude ?? null,
       });
     } else {
       setFormData(getInitialFormData());
@@ -142,11 +148,13 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
       await utils.transactions.summary.invalidate(undefined);
       // Invalidate periods query to update month summaries
       await utils.transactions.periods.invalidate(undefined);
+      await utils.dashboard.expenseByLocation.invalidate(undefined);
+      await utils.dashboard.expenseByLocationMap.invalidate(undefined);
       // Refresh account balances
       await utils.accounts.list.invalidate();
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: { message?: string }) => {
       toast.error(error.message || "Failed to create transaction");
     },
   });
@@ -161,11 +169,13 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
       await utils.transactions.summary.invalidate(undefined);
       // Invalidate periods query to update month summaries
       await utils.transactions.periods.invalidate(undefined);
+      await utils.dashboard.expenseByLocation.invalidate(undefined);
+      await utils.dashboard.expenseByLocationMap.invalidate(undefined);
       // Refresh account balances
       await utils.accounts.list.invalidate();
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: { message?: string }) => {
       toast.error(error.message || "Failed to update transaction");
     },
   });
@@ -213,6 +223,9 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           time: formData.includeTime && formData.time ? formData.time : undefined,
           notes: formData.notes || undefined,
           tags: formData.tags,
+          locationName: formData.locationName?.trim() || null,
+          latitude: formData.latitude ?? null,
+          longitude: formData.longitude ?? null,
         };
         if (formData.hasFee && formData.feeAmount) {
           const feeAmount = parseFloat(formData.feeAmount);
@@ -246,6 +259,9 @@ export function useTransactionForm(editingTransaction?: Transaction | null) {
           notes: formData.notes || undefined,
           attachment,
           tags: formData.tags,
+          locationName: formData.locationName?.trim() || undefined,
+          latitude: formData.latitude ?? undefined,
+          longitude: formData.longitude ?? undefined,
         };
         if (formData.hasFee && formData.feeAmount) {
           const feeAmount = parseFloat(formData.feeAmount);

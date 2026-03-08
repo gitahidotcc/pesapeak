@@ -28,6 +28,8 @@ export const list = authedProcedure
       const searchCondition = or(
         // Search in transaction notes
         like(transactions.notes, searchTerm),
+        // Search in location name
+        like(transactions.locationName, searchTerm),
         // Search in category name
         sql`EXISTS (
           SELECT 1 FROM ${categories} 
@@ -76,6 +78,9 @@ export const list = authedProcedure
           attachmentPath: transactions.attachmentPath,
           attachmentFileName: transactions.attachmentFileName,
           attachmentMimeType: transactions.attachmentMimeType,
+          locationName: transactions.locationName,
+          latitude: transactions.latitude,
+          longitude: transactions.longitude,
           createdAt: transactions.createdAt,
           updatedAt: transactions.updatedAt,
         })
@@ -134,6 +139,9 @@ export const list = authedProcedure
           attachmentPath: transaction.attachmentPath ?? null,
           attachmentFileName: transaction.attachmentFileName ?? null,
           attachmentMimeType: transaction.attachmentMimeType ?? null,
+          locationName: transaction.locationName ?? null,
+          latitude: transaction.latitude ?? null,
+          longitude: transaction.longitude ?? null,
           createdAt: new Date(transaction.createdAt ?? Date.now()).toISOString(),
           updatedAt: new Date(transaction.updatedAt ?? Date.now()).toISOString(),
           tags: tagsMap[transaction.id] || [],
@@ -183,6 +191,9 @@ export const list = authedProcedure
         attachmentPath: transaction.attachmentPath ?? null,
         attachmentFileName: transaction.attachmentFileName ?? null,
         attachmentMimeType: transaction.attachmentMimeType ?? null,
+        locationName: transaction.locationName ?? null,
+        latitude: transaction.latitude ?? null,
+        longitude: transaction.longitude ?? null,
         createdAt: new Date(transaction.createdAt ?? Date.now()).toISOString(),
         updatedAt: new Date(transaction.updatedAt ?? Date.now()).toISOString(),
         tags: transaction.tags.map((tt: any) => ({

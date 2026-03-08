@@ -47,6 +47,9 @@ export const transactionOutputSchema = z.object({
   attachmentPath: z.string().nullable(),
   attachmentFileName: z.string().nullable(),
   attachmentMimeType: z.string().nullable(),
+  locationName: z.string().nullable(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
   tags: z.array(z.object({
@@ -64,26 +67,40 @@ export const feeInputSchema = z
   })
   .optional();
 
-export const createTransactionInputSchema = z.object({
-  type: z.enum(["income", "expense", "transfer"]),
-  amount: z.number().min(0.01, "Amount must be greater than 0"),
-  accountId: z.string().optional(),
-  categoryId: z.string().optional(),
-  fromAccountId: z.string().optional(),
-  toAccountId: z.string().optional(),
-  date: z.string(), // ISO date string
-  time: z.string().optional(), // HH:mm format
-  notes: z.string().optional(),
-  fee: feeInputSchema,
-  attachment: z
-    .object({
-      fileName: z.string(),
-      mimeType: z.string(),
-      data: z.string(), // base64 encoded
-    })
-    .optional(),
-  tags: z.array(z.string()).optional(), // Array of tag IDs
-});
+export const createTransactionInputSchema = z
+  .object({
+    type: z.enum(["income", "expense", "transfer"]),
+    amount: z.number().min(0.01, "Amount must be greater than 0"),
+    accountId: z.string().optional(),
+    categoryId: z.string().optional(),
+    fromAccountId: z.string().optional(),
+    toAccountId: z.string().optional(),
+    date: z.string(), // ISO date string
+    time: z.string().optional(), // HH:mm format
+    notes: z.string().optional(),
+    fee: feeInputSchema,
+    attachment: z
+      .object({
+        fileName: z.string(),
+        mimeType: z.string(),
+        data: z.string(), // base64 encoded
+      })
+      .optional(),
+    tags: z.array(z.string()).optional(), // Array of tag IDs
+    locationName: z.string().optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+  })
+  .refine(
+    (data) => {
+      const hasCoords =
+        (data.latitude != null && Number.isFinite(data.latitude)) ||
+        (data.longitude != null && Number.isFinite(data.longitude));
+      if (!hasCoords) return true;
+      return typeof data.locationName === "string" && data.locationName.trim().length > 0;
+    },
+    { message: "Location name is required when coordinates are provided", path: ["locationName"] }
+  );
 
 export const transactionFiltersSchema = z.object({
   accountId: z.string().optional(),

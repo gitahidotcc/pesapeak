@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, X } from "lucide-react";
+import { Edit, MapPin, Trash2, X } from "lucide-react";
 import { ArrowRightLeft, Plus, Minus } from "lucide-react";
 import {
   Dialog,
@@ -301,6 +301,28 @@ export function TransactionDetailsDialog({
                 </div>
               )}
             </div>
+
+            {/* Location Card */}
+            {(transaction.locationName || transaction.latitude != null || transaction.longitude != null) && (
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:p-5 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Location
+                </h3>
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <div className="space-y-0.5">
+                    <div className="text-base sm:text-lg font-semibold">
+                      {transaction.locationName || "Unknown place"}
+                    </div>
+                    {(transaction.latitude != null && transaction.longitude != null) && (
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {transaction.latitude.toFixed(5)}, {transaction.longitude.toFixed(5)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tags Card */}
             {transaction.tags && transaction.tags.length > 0 && (

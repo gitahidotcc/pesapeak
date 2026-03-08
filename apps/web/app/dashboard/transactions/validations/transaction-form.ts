@@ -21,6 +21,9 @@ export const transactionFormSchema = z.object({
   includeTime: z.boolean().default(false),
   notes: z.string().optional(),
   attachment: z.instanceof(File).nullable().optional(),
+  locationName: z.string().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 }).superRefine((data, ctx) => {
   // For income/expense, accountId and categoryId are required
   if (data.type === "income" || data.type === "expense") {
@@ -81,6 +84,18 @@ export const transactionFormSchema = z.object({
         path: ["feeAmount"],
       });
     }
+  }
+
+  // Location: if coordinates are present, locationName is required
+  const hasCoords =
+    (data.latitude != null && Number.isFinite(data.latitude)) ||
+    (data.longitude != null && Number.isFinite(data.longitude));
+  if (hasCoords && (!data.locationName || typeof data.locationName !== "string" || !data.locationName.trim())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Location name is required when coordinates are set",
+      path: ["locationName"],
+    });
   }
 });
 

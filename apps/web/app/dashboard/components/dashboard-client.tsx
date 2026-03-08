@@ -1,16 +1,22 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
 import { api } from "@/lib/trpc";
 import { DashboardFilterDialog } from "./dashboard-filter-dialog";
 import { BalanceChart } from "./balance-chart";
 import { IncomeExpenseChart } from "./income-expense-chart";
 import { ExpenseCategoryChart } from "./expense-category-chart";
+import { SpendingByAreaChart } from "./spending-by-area-chart";
 import { TagAnalyticsChart } from "./tag-analytics-chart";
 import { PeriodFilter } from "../transactions/components/period-filter-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+
+const SpendingMap = dynamic(() => import("./spending-map").then((m) => m.SpendingMap), {
+  ssr: false,
+});
 
 export function DashboardClient() {
     const now = new Date();
@@ -57,6 +63,18 @@ export function DashboardClient() {
     });
 
     const { data: categoryBreakdown } = api.dashboard.expenseByCategory.useQuery({
+        accountId: selectedAccountId ?? undefined,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+    });
+
+    const { data: expenseByLocationData } = api.dashboard.expenseByLocation.useQuery({
+        accountId: selectedAccountId ?? undefined,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+    });
+
+    const { data: expenseByLocationMapData } = api.dashboard.expenseByLocationMap.useQuery({
         accountId: selectedAccountId ?? undefined,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
@@ -170,6 +188,14 @@ export function DashboardClient() {
 
                 <div className="md:col-span-2">
                     <ExpenseCategoryChart data={categoryBreakdown ?? []} currency={currency} />
+                </div>
+
+                <div className="md:col-span-2">
+                    <SpendingByAreaChart data={expenseByLocationData} currency={currency} />
+                </div>
+
+                <div className="md:col-span-2">
+                    <SpendingMap data={expenseByLocationMapData} currency={currency} />
                 </div>
 
                 <div className="md:col-span-2">

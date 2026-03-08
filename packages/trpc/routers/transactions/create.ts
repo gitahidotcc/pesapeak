@@ -116,6 +116,9 @@ export const create = authedProcedure
             attachmentPath: preFetched.attachmentPath,
             attachmentFileName: preFetched.attachmentFileName,
             attachmentMimeType: preFetched.attachmentMimeType,
+            locationName: input.locationName?.trim() || null,
+            latitude: input.latitude ?? null,
+            longitude: input.longitude ?? null,
             isFee: false,
           })
           .returning()
@@ -149,6 +152,9 @@ export const create = authedProcedure
               attachmentPath: null,
               attachmentFileName: null,
               attachmentMimeType: null,
+              locationName: null,
+              latitude: null,
+              longitude: null,
               parentTransactionId: transactionId,
               isFee: true,
             })
@@ -242,6 +248,9 @@ export const create = authedProcedure
       attachmentPath: newTransaction.attachmentPath ?? null,
       attachmentFileName: newTransaction.attachmentFileName ?? null,
       attachmentMimeType: newTransaction.attachmentMimeType ?? null,
+      locationName: newTransaction.locationName ?? null,
+      latitude: newTransaction.latitude ?? null,
+      longitude: newTransaction.longitude ?? null,
       createdAt: new Date(newTransaction.createdAt ?? Date.now()).toISOString(),
       updatedAt: new Date(newTransaction.updatedAt ?? Date.now()).toISOString(),
       tags: tagsList,

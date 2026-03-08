@@ -35,7 +35,20 @@ export const update = authedProcedure
         .optional(),
       removeAttachment: z.boolean().optional(),
       tags: z.array(z.string()).optional(),
+      locationName: z.string().nullable().optional(),
+      latitude: z.number().min(-90).max(90).nullable().optional(),
+      longitude: z.number().min(-180).max(180).nullable().optional(),
     })
+  )
+  .refine(
+    (data) => {
+      const hasCoords =
+        (data.latitude != null && Number.isFinite(data.latitude)) ||
+        (data.longitude != null && Number.isFinite(data.longitude));
+      if (!hasCoords) return true;
+      return typeof data.locationName === "string" && data.locationName.trim().length > 0;
+    },
+    { message: "Location name is required when coordinates are provided", path: ["locationName"] }
   )
   .output(transactionOutputSchema)
   .mutation(async ({ ctx, input }) => {
@@ -174,6 +187,15 @@ export const update = authedProcedure
         if (updateData.toAccountId !== undefined) {
           updateValues.toAccountId = updateData.toAccountId;
         }
+        if (updateData.locationName !== undefined) {
+          updateValues.locationName = updateData.locationName?.trim() ?? null;
+        }
+        if (updateData.latitude !== undefined) {
+          updateValues.latitude = updateData.latitude;
+        }
+        if (updateData.longitude !== undefined) {
+          updateValues.longitude = updateData.longitude;
+        }
 
         // Handle attachment path if provided or removed
         if (updateData.attachment) {
@@ -236,6 +258,9 @@ export const update = authedProcedure
               attachmentPath: null,
               attachmentFileName: null,
               attachmentMimeType: null,
+              locationName: null,
+              latitude: null,
+              longitude: null,
               parentTransactionId: updatedTx.id,
               isFee: true,
             }).run();
@@ -340,6 +365,9 @@ export const update = authedProcedure
       attachmentPath: updated.attachmentPath ?? null,
       attachmentFileName: updated.attachmentFileName ?? null,
       attachmentMimeType: updated.attachmentMimeType ?? null,
+      locationName: updated.locationName ?? null,
+      latitude: updated.latitude ?? null,
+      longitude: updated.longitude ?? null,
       createdAt: new Date(updated.createdAt ?? Date.now()).toISOString(),
       updatedAt: new Date(updated.updatedAt ?? Date.now()).toISOString(),
       tags: tagsList,

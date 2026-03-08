@@ -1,4 +1,4 @@
-import { Plus, Minus, ArrowRightLeft } from "lucide-react";
+import { MapPin, Plus, Minus, ArrowRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ICON_MAP } from "@/lib/icons";
 
@@ -125,6 +125,15 @@ export function TransactionItem({
                                 </>
                             )}
                             <span>{getAccountName(transaction.accountId || transaction.fromAccountId)}</span>
+                            {transaction.locationName && (
+                                <>
+                                    <span className="text-muted-foreground/40">•</span>
+                                    <span className="inline-flex items-center gap-1 truncate">
+                                        <MapPin className="h-3 w-3 shrink-0" />
+                                        {transaction.locationName}
+                                    </span>
+                                </>
+                            )}
                         </div>
                         {transaction.time && (
                             <span className="font-medium tabular-nums opacity-70 group-hover:opacity-100">

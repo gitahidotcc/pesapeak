@@ -15,6 +15,7 @@ import { AccountPicker } from "./account-picker";
 import { CategoryPicker } from "./category-picker";
 import { DateTimePicker } from "./date-time-picker";
 import { AttachmentPicker } from "./attachment-picker";
+import { LocationInput } from "./location-input";
 import type { TransactionType } from "../types/transaction";
 import type { Transaction } from "@pesapeak/shared/types/transactions";
 import { TagsInput } from "./tags-input";
@@ -295,6 +296,28 @@ export function AddTransactionDialog({
               placeholder="Add any additional details..."
               rows={3}
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          {/* Location */}
+          <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+            <LocationInput
+              locationName={formData.locationName}
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              onLocationNameChange={(value) => updateField("locationName", value)}
+              onCoordinatesChange={(lat, lon) => {
+                updateField("latitude", lat);
+                updateField("longitude", lon);
+              }}
+              onClear={() => {
+                updateField("locationName", "");
+                updateField("latitude", null);
+                updateField("longitude", null);
+              }}
+              error={errors.locationName}
+              accountId={formData.accountId || undefined}
+              enabled={open}
             />
           </div>
 

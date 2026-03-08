@@ -19,6 +19,9 @@ export interface Transaction {
   attachmentPath: string | null;
   attachmentFileName: string | null;
   attachmentMimeType: string | null;
+  locationName: string | null;
+  latitude: number | null;
+  longitude: number | null;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
   tags?: { id: string; name: string; type?: string }[];

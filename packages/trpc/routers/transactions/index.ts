@@ -5,6 +5,7 @@ import { periods } from "./periods";
 import { create } from "./create";
 import { update } from "./update";
 import { deleteProcedure } from "./delete";
+import { locationSuggestions } from "./location-suggestions";
 
 export const transactionsRouter = router({
   list,
@@ -13,4 +14,5 @@ export const transactionsRouter = router({
   create,
   update,
   delete: deleteProcedure,
+  locationSuggestions,
 });
